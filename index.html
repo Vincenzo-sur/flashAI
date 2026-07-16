@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduFlash AI — Flashcards for Google Classroom</title>
+  <meta name="description" content="A student project: AI-generated flashcards from class transcripts for Google Classroom. Built in 21 days." />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/landing.css" />
+</head>
+<body>
+
+  <!-- ── Navbar ── -->
+  <nav class="navbar" id="navbar">
+    <div class="container navbar-inner">
+      <div class="logo">
+        <div class="logo-icon">📚</div>
+        <span class="logo-name">EduFlash <em>AI</em></span>
+        <span class="navbar-tag">Day 1 of 21</span>
+      </div>
+      <div class="navbar-right">
+        <a href="teacher.html" class="btn btn-outline" id="nav-teacher">Teacher</a>
+        <a href="student.html" class="btn btn-green"   id="nav-student">Student</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero-inner">
+
+        <!-- Left: text -->
+        <div>
+          <div class="hero-tag">
+            🚧 Work in progress — Day 1 of 21
+          </div>
+
+          <h1 class="hero-title" id="hero-heading">
+            Flashcards from your<br>
+            <span class="highlight">class transcript</span>,<br>
+            built for <span class="highlight-yellow">Google Classroom</span>
+          </h1>
+
+          <p class="hero-desc">
+            I'm building an add-on where teachers (or a class admin) paste the day's
+            lecture transcript, and AI generates revision flashcards — with MCQ questions
+            and comprehension ratings — sent straight to students in Google Classroom.
+          </p>
+
+          <div class="hero-buttons">
+            <a href="teacher.html" class="btn btn-green"   id="hero-teacher-btn">I'm a Teacher →</a>
+            <a href="student.html" class="btn btn-yellow"  id="hero-student-btn">I'm a Student →</a>
+          </div>
+
+          <p class="hero-note">
+            📌 This is a prototype.
+            No login needed right now — data is stored locally.
+            OAuth + Classroom API coming on Day 18.
+          </p>
+        </div>
+
+        <!-- Right: flashcard demo -->
+        <div class="card-preview-wrap">
+          <p class="card-preview-label">Try the flashcard below ↓</p>
+
+          <div class="flashcard" id="demo-flashcard">
+            <!-- Header -->
+            <div class="card-header" onclick="flipCard()" style="cursor:pointer;" title="Click to flip">
+              <span class="card-header-label" id="card-header-label">Question</span>
+              <span class="card-header-tag">Newton's Laws · Physics</span>
+            </div>
+
+            <!-- Body -->
+            <div class="card-body">
+
+              <!-- Front -->
+              <div class="card-body-front">
+                <p class="card-question" id="demo-question">
+                  Which of Newton's laws states that an object at rest stays at rest unless acted on by an external force?
+                </p>
+                <div class="mcq-options" id="mcq-options">
+                  <div class="mcq-option" id="opt-a">
+                    <span class="option-letter">A</span>
+                    <span class="option-text">Newton's Second Law</span>
+                  </div>
+                  <div class="mcq-option" id="opt-b">
+                    <span class="option-letter">B</span>
+                    <span class="option-text">Newton's First Law</span>
+                  </div>
+                  <div class="mcq-option" id="opt-c">
+                    <span class="option-letter">C</span>
+                    <span class="option-text">Newton's Third Law</span>
+                  </div>
+                  <div class="mcq-option" id="opt-d">
+                    <span class="option-letter">D</span>
+                    <span class="option-text">Law of Gravitation</span>
+                  </div>
+                </div>
+                <p class="card-flip-hint">Click an answer, or click the header to flip</p>
+              </div>
+
+              <!-- Back -->
+              <div class="card-body-back">
+                <p class="card-answer-label">Answer</p>
+                <p class="card-answer-text" id="demo-answer">
+                  Newton's First Law of Motion, also called the Law of Inertia — objects resist changes to their state of motion.
+                </p>
+                <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:10px;">
+                  How well did you know this?
+                </p>
+                <div class="self-rating" id="self-rating">
+                  <button class="rating-btn know"  data-rating="know">✓ Know it</button>
+                  <button class="rating-btn fuzzy" data-rating="fuzzy">~ Fuzzy</button>
+                  <button class="rating-btn nope"  data-rating="nope">✗ Don't know</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Navigation -->
+          <div class="card-nav" id="card-nav">
+            <button class="card-nav-btn" id="btn-prev" disabled>← Prev</button>
+            <span class="card-counter" id="card-counter">1 / 3</span>
+            <button class="card-nav-btn" id="btn-next">Next →</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── What this app does ── -->
+  <section class="about-section" id="about">
+    <div class="container">
+      <h2 class="section-title" id="features-heading">What this app will do</h2>
+      <p class="section-sub">
+        Three things, done well — one for the admin, one for students, one for the teacher.
+      </p>
+
+      <div class="about-grid">
+
+        <div class="about-card" id="feature-generate">
+          <div class="about-icon">🧠</div>
+          <div class="about-card-title">Generate flashcards from transcript</div>
+          <p class="about-card-desc">
+            A class admin pastes the day's transcript. Gemini AI reads it and generates
+            flashcards — each with a question, a clear answer, and 4 MCQ options.
+          </p>
+        </div>
+
+        <div class="about-card" id="feature-student">
+          <div class="about-icon">📝</div>
+          <div class="about-card-title">Students review &amp; rate</div>
+          <p class="about-card-desc">
+            Students answer the MCQ on each card, then self-rate: <em>Know it</em>,
+            <em>Fuzzy</em>, or <em>Don't know</em>. Both signals together give a
+            fuller picture of comprehension.
+          </p>
+        </div>
+
+        <div class="about-card" id="feature-analytics">
+          <div class="about-icon">📊</div>
+          <div class="about-card-title">Teacher sees weak &amp; strong topics</div>
+          <p class="about-card-desc">
+            The teacher's dashboard shows which topics were understood well and which
+            ones need re-teaching — based on combined MCQ scores and self-ratings
+            from the whole class.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 21-day roadmap strip ── -->
+  <section class="roadmap-strip" id="roadmap">
+    <div class="container">
+      <p class="roadmap-title">📅 21-Day Build Plan</p>
+      <div class="roadmap-weeks">
+
+        <div class="week-block active" id="week-1">
+          <div class="week-label">Week 1 — Foundation</div>
+          <div class="week-desc">
+            Landing page, teacher dashboard layout, transcript input, Gemini integration, flashcard preview.
+          </div>
+          <div class="week-days">Days 1–7 · Currently here</div>
+        </div>
+
+        <div class="week-block" id="week-2">
+          <div class="week-label">Week 2 — Student Experience</div>
+          <div class="week-desc">
+            Student flashcard viewer, MCQ system, self-rating, completion screen, data layer.
+          </div>
+          <div class="week-days">Days 8–14</div>
+        </div>
+
+        <div class="week-block" id="week-3">
+          <div class="week-label">Week 3 — Analytics &amp; Launch</div>
+          <div class="week-desc">
+            Teacher analytics, topic heatmap, AI suggestions, Google OAuth, Classroom API, final polish.
+          </div>
+          <div class="week-days">Days 15–21</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer-text">
+        EduFlash AI · Day 1 of 21 ·
+        Built with <a href="https://aistudio.google.com" target="_blank" rel="noopener">Google Gemini</a>
+        for Google Classroom ·
+        <a href="README.md" target="_blank">README</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="js/landing.js"></script>
+</body>
+</html>

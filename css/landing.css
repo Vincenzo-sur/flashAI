@@ -1,0 +1,456 @@
+/* ============================================================
+   EduFlash AI — Landing Page
+   Day 1: Simple, honest student project start
+   Google Classroom theme: green, yellow, dark
+   ============================================================ */
+
+/* ── Navbar ── */
+.navbar {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--green);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.logo-name { color: var(--text); }
+.logo-name em {
+  color: var(--yellow);
+  font-style: normal;
+}
+.navbar-tag {
+  font-size: 0.75rem;
+  background: rgba(251,188,4,0.12);
+  color: var(--yellow);
+  border: 1px solid rgba(251,188,4,0.3);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-weight: 500;
+}
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Hero ── */
+.hero {
+  padding: 64px 0 48px;
+  border-bottom: 1px solid var(--border);
+}
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--green-light);
+  background: rgba(30,142,62,0.1);
+  border: 1px solid rgba(30,142,62,0.25);
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.hero-title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+.hero-title .highlight {
+  color: var(--green-light);
+}
+.hero-title .highlight-yellow {
+  color: var(--yellow);
+}
+
+.hero-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 28px;
+  max-width: 440px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-note {
+  margin-top: 20px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero-note a {
+  color: var(--green-light);
+  text-decoration: underline;
+}
+
+/* ── Flashcard Preview ── */
+.card-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-preview-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  align-self: flex-start;
+}
+
+/* The flashcard */
+.flashcard {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  user-select: none;
+}
+.flashcard:hover {
+  border-color: var(--green);
+}
+
+.card-header {
+  background: var(--green-dark);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-header-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.card-header-tag {
+  font-size: 0.68rem;
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.card-body {
+  padding: 20px 16px;
+}
+.card-body-front { display: block; }
+.card-body-back  { display: none; }
+
+.flashcard.flipped .card-body-front { display: none; }
+.flashcard.flipped .card-body-back  { display: block; }
+.flashcard.flipped .card-header { background: var(--green); }
+
+.card-question {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* MCQ options */
+.mcq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.mcq-option {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mcq-option:hover {
+  border-color: var(--green);
+  color: var(--text);
+}
+.mcq-option.correct {
+  border-color: var(--green);
+  background: rgba(30,142,62,0.1);
+  color: var(--green-light);
+}
+.mcq-option.wrong {
+  border-color: #d93025;
+  background: rgba(217,48,37,0.08);
+  color: #f28b82;
+}
+.option-letter {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.mcq-option.correct .option-letter { background: var(--green); color: #fff; }
+.mcq-option.wrong   .option-letter { background: #d93025;      color: #fff; }
+
+.card-flip-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* Answer (back of card) */
+.card-answer-label {
+  font-size: 0.72rem;
+  color: var(--green-light);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.card-answer-text {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* Self-rating buttons */
+.self-rating {
+  display: flex;
+  gap: 8px;
+}
+.rating-btn {
+  flex: 1;
+  padding: 7px 4px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid;
+  cursor: pointer;
+  transition: var(--transition);
+  background: transparent;
+  font-family: 'Roboto', sans-serif;
+}
+.rating-btn.know  {
+  border-color: rgba(30,142,62,0.4);
+  color: var(--green-light);
+}
+.rating-btn.know:hover  { background: rgba(30,142,62,0.12); }
+.rating-btn.fuzzy {
+  border-color: rgba(251,188,4,0.4);
+  color: var(--yellow);
+}
+.rating-btn.fuzzy:hover { background: rgba(251,188,4,0.1); }
+.rating-btn.nope  {
+  border-color: rgba(217,48,37,0.35);
+  color: #f28b82;
+}
+.rating-btn.nope:hover  { background: rgba(217,48,37,0.08); }
+
+.rating-btn.selected-know  { background: rgba(30,142,62,0.2);  border-color: var(--green); }
+.rating-btn.selected-fuzzy { background: rgba(251,188,4,0.15); border-color: var(--yellow); }
+.rating-btn.selected-nope  { background: rgba(217,48,37,0.12); border-color: #d93025; }
+
+/* Card navigation */
+.card-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 360px;
+}
+.card-nav-btn {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Roboto', sans-serif;
+  transition: var(--transition);
+}
+.card-nav-btn:hover:not(:disabled) {
+  border-color: var(--green);
+  color: var(--green-light);
+}
+.card-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.card-counter {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* ── What This App Does ── */
+.about-section {
+  padding: 56px 0;
+  border-bottom: 1px solid var(--border);
+}
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.section-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.about-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: var(--transition);
+}
+.about-card:hover {
+  border-color: var(--green);
+}
+.about-icon {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+}
+.about-card-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  font-family: 'Google Sans', sans-serif;
+}
+.about-card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Roadmap strip ── */
+.roadmap-strip {
+  padding: 40px 0;
+  border-bottom: 1px solid var(--border);
+}
+.roadmap-title {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 20px;
+}
+.roadmap-weeks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.week-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.week-block.active {
+  border-color: var(--yellow);
+}
+.week-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+.week-block.active .week-label { color: var(--yellow); }
+.week-block:not(.active) .week-label { color: var(--text-dim); }
+.week-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.week-days {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* ── Footer ── */
+.footer {
+  padding: 28px 0;
+  text-align: center;
+}
+.footer-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.footer-text a {
+  color: var(--green-light);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hero-inner       { grid-template-columns: 1fr; }
+  .about-grid       { grid-template-columns: 1fr; }
+  .roadmap-weeks    { grid-template-columns: 1fr; }
+  .hero-title       { font-size: 1.6rem; }
+  .card-preview-wrap{ width: 100%; }
+  .flashcard        { max-width: 100%; }
+}
