@@ -386,51 +386,7 @@
   line-height: 1.6;
 }
 
-/* ── Roadmap strip ── */
-.roadmap-strip {
-  padding: 40px 0;
-  border-bottom: 1px solid var(--border);
-}
-.roadmap-title {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-bottom: 20px;
-}
-.roadmap-weeks {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.week-block {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-.week-block.active {
-  border-color: var(--yellow);
-}
-.week-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-bottom: 8px;
-}
-.week-block.active .week-label { color: var(--yellow); }
-.week-block:not(.active) .week-label { color: var(--text-dim); }
-.week-desc {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-.week-days {
-  margin-top: 8px;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
+
 
 /* ── Footer ── */
 .footer {
