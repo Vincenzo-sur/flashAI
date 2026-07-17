@@ -35,7 +35,7 @@
     ════════════════════════════ -->
     <div class="sidebar-wrap" id="sidebar-wrap">
 
-      <!-- Toggle button sits in the WRAP, never clipped by sidebar's overflow -->
+      <!-- Toggle button — outside sidebar so it's never clipped -->
       <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Toggle sidebar">
         ‹
       </button>
@@ -144,6 +144,25 @@
     ════════════════════════════ -->
     <main class="main-content" id="main-content">
 
+      <!-- Context strip -->
+      <div class="context-strip" id="context-strip">
+        <div class="context-class-name">Physics — Batch A</div>
+        <div class="context-stats">
+          <div class="context-stat">
+            📋 Sessions
+            <span class="context-stat-val">6</span>
+          </div>
+          <div class="context-stat">
+            👥 Students
+            <span class="context-stat-val">28</span>
+          </div>
+          <div class="context-stat">
+            🕐 Last session
+            <span class="context-stat-val">Yesterday</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Top tab bar -->
       <div class="panel-header" id="panel-header" role="tablist">
         <div class="panel-tab active" data-panel="transcript" id="tab-transcript" role="tab">Paste Transcript</div>
@@ -153,15 +172,57 @@
 
       <div class="panel-body">
 
+        <!-- ══════════════════════════════
+             GENERATE PANELS
+        ══════════════════════════════ -->
+
         <!-- Panel: Paste Transcript -->
         <div class="panel-content active" id="panel-transcript" role="tabpanel">
-          <div class="placeholder-state">
-            <div class="placeholder-icon">📄</div>
-            <div class="placeholder-title">Paste your class transcript here</div>
-            <p class="placeholder-desc">
-              The transcript input area is coming soon. You'll be able to paste the full text of your class session and set the subject, topic, and date before generating flashcards.
+
+          <div class="generate-welcome" id="generate-welcome">
+            <div class="generate-welcome-icon">📄</div>
+            <h2>Paste today's class transcript</h2>
+            <p>
+              Fill in the topic details below, then paste the full transcript of your class session.
+              Gemini AI will read it and generate flashcards with MCQ questions for your students.
             </p>
-            <span class="coming-tag">Coming soon</span>
+          </div>
+
+          <div class="transcript-form" id="transcript-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="subject-input">Subject</label>
+                <input type="text" id="subject-input" class="form-input" placeholder="e.g. Physics" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="topic-input">Topic</label>
+                <input type="text" id="topic-input" class="form-input" placeholder="e.g. Newton's Laws" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="date-input">Session date</label>
+                <input type="date" id="date-input" class="form-input" />
+              </div>
+            </div>
+
+            <div class="transcript-area-wrap">
+              <textarea
+                id="transcript-input"
+                class="form-textarea"
+                placeholder="Paste the full transcript of your class session here…&#10;&#10;Tip: The longer and more detailed the transcript, the better the flashcards."
+                maxlength="15000"
+              ></textarea>
+              <span class="char-count" id="char-count">0 / 15,000</span>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-green" id="generate-btn" disabled>
+                ✨ Generate Flashcards
+              </button>
+              <p class="form-hint">
+                Gemini AI integration coming soon —<br>
+                the form is ready and waiting.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -171,7 +232,7 @@
             <div class="placeholder-icon">🃏</div>
             <div class="placeholder-title">Flashcard preview</div>
             <p class="placeholder-desc">
-              Once Gemini generates your flashcards, you'll see them here to review, edit, or delete before publishing. Each card will have a question, answer, and 4 MCQ options.
+              Once Gemini generates your flashcards, you'll see them here to review, edit, or delete before publishing.
             </p>
             <span class="coming-tag">Coming soon</span>
           </div>
@@ -183,35 +244,186 @@
             <div class="placeholder-icon">🚀</div>
             <div class="placeholder-title">Publish to Google Classroom</div>
             <p class="placeholder-desc">
-              After previewing your flashcards, publish them to your class. Students will be able to access and review them directly.
+              After reviewing your flashcards, publish the deck to your class. Students will see it in their session list.
             </p>
             <span class="coming-tag">Coming soon</span>
           </div>
         </div>
 
+        <!-- ══════════════════════════════
+             SESSIONS PANELS
+        ══════════════════════════════ -->
+
         <!-- Panel: All Sessions -->
         <div class="panel-content" id="panel-all-sessions" role="tabpanel">
-          <div class="placeholder-state">
-            <div class="placeholder-icon">📋</div>
-            <div class="placeholder-title">All published sessions</div>
-            <p class="placeholder-desc">
-              Every flashcard deck you've published will show up here with the date, topic, number of cards, and how many students have completed it.
-            </p>
-            <span class="coming-tag">Coming soon</span>
+
+          <div class="sessions-toolbar">
+            <div>
+              <span class="sessions-title">All Sessions</span>
+              <span class="sessions-count">6 sessions</span>
+            </div>
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="search-input" placeholder="Search sessions…" id="session-search" />
+            </div>
+          </div>
+
+          <div class="session-list" id="session-list">
+
+            <div class="session-card">
+              <div class="session-card-left">
+                <div class="session-card-topic">Newton's Laws of Motion</div>
+                <div class="session-card-meta">
+                  <span>📅 Today</span>
+                  <span>🃏 8 cards</span>
+                  <span>👥 28 students</span>
+                </div>
+                <div class="completion-wrap">
+                  <div class="completion-bar-bg">
+                    <div class="completion-bar-fill high" style="width: 82%"></div>
+                  </div>
+                  <span class="completion-label">82% completed</span>
+                </div>
+              </div>
+              <div class="session-card-right">
+                <span class="session-status-badge badge-live">● Live</span>
+                <div class="session-card-actions">
+                  <button class="action-btn">View Results</button>
+                  <button class="action-btn">Close</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="session-card">
+              <div class="session-card-left">
+                <div class="session-card-topic">Work, Energy and Power</div>
+                <div class="session-card-meta">
+                  <span>📅 Yesterday</span>
+                  <span>🃏 6 cards</span>
+                  <span>👥 28 students</span>
+                </div>
+                <div class="completion-wrap">
+                  <div class="completion-bar-bg">
+                    <div class="completion-bar-fill high" style="width: 96%"></div>
+                  </div>
+                  <span class="completion-label">96% completed</span>
+                </div>
+              </div>
+              <div class="session-card-right">
+                <span class="session-status-badge badge-closed">Closed</span>
+                <div class="session-card-actions">
+                  <button class="action-btn">View Results</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="session-card">
+              <div class="session-card-left">
+                <div class="session-card-topic">Thermodynamics — Part 1</div>
+                <div class="session-card-meta">
+                  <span>📅 Jul 15</span>
+                  <span>🃏 10 cards</span>
+                  <span>👥 28 students</span>
+                </div>
+                <div class="completion-wrap">
+                  <div class="completion-bar-bg">
+                    <div class="completion-bar-fill mid" style="width: 54%"></div>
+                  </div>
+                  <span class="completion-label">54% completed</span>
+                </div>
+              </div>
+              <div class="session-card-right">
+                <span class="session-status-badge badge-closed">Closed</span>
+                <div class="session-card-actions">
+                  <button class="action-btn">View Results</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="session-card">
+              <div class="session-card-left">
+                <div class="session-card-topic">Waves and Oscillations</div>
+                <div class="session-card-meta">
+                  <span>📅 Jul 12</span>
+                  <span>🃏 7 cards</span>
+                  <span>👥 28 students</span>
+                </div>
+                <div class="completion-wrap">
+                  <div class="completion-bar-bg">
+                    <div class="completion-bar-fill low" style="width: 31%"></div>
+                  </div>
+                  <span class="completion-label">31% completed</span>
+                </div>
+              </div>
+              <div class="session-card-right">
+                <span class="session-status-badge badge-closed">Closed</span>
+                <div class="session-card-actions">
+                  <button class="action-btn">View Results</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
         <!-- Panel: Drafts -->
         <div class="panel-content" id="panel-drafts" role="tabpanel">
-          <div class="placeholder-state">
-            <div class="placeholder-icon">📝</div>
-            <div class="placeholder-title">Draft sessions</div>
-            <p class="placeholder-desc">
-              Saved but unpublished flashcard decks will live here so you can come back and edit them before sending to students.
-            </p>
-            <span class="coming-tag">Coming soon</span>
+
+          <div class="sessions-toolbar">
+            <div>
+              <span class="sessions-title">Drafts</span>
+              <span class="sessions-count">2 unpublished</span>
+            </div>
+          </div>
+
+          <div class="session-list">
+
+            <div class="session-card">
+              <div class="session-card-left">
+                <div class="session-card-topic">Gravitation — Kepler's Laws</div>
+                <div class="session-card-meta">
+                  <span>📅 Saved Jul 16</span>
+                  <span>🃏 9 cards</span>
+                </div>
+                <div class="completion-wrap">
+                  <span class="completion-label" style="color: var(--text-dim); font-size: 0.78rem;">Not published yet</span>
+                </div>
+              </div>
+              <div class="session-card-right">
+                <span class="session-status-badge badge-draft">Draft</span>
+                <div class="session-card-actions">
+                  <button class="action-btn">Edit</button>
+                  <button class="action-btn primary">Publish →</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="session-card">
+              <div class="session-card-left">
+                <div class="session-card-topic">Electromagnetic Induction</div>
+                <div class="session-card-meta">
+                  <span>📅 Saved Jul 14</span>
+                  <span>🃏 5 cards</span>
+                </div>
+                <div class="completion-wrap">
+                  <span class="completion-label" style="color: var(--text-dim); font-size: 0.78rem;">Not published yet</span>
+                </div>
+              </div>
+              <div class="session-card-right">
+                <span class="session-status-badge badge-draft">Draft</span>
+                <div class="session-card-actions">
+                  <button class="action-btn">Edit</button>
+                  <button class="action-btn primary">Publish →</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        <!-- ══════════════════════════════
+             ANALYTICS PANELS
+        ══════════════════════════════ -->
 
         <!-- Panel: Overview -->
         <div class="panel-content" id="panel-overview" role="tabpanel">
@@ -219,7 +431,7 @@
             <div class="placeholder-icon">📊</div>
             <div class="placeholder-title">Analytics overview</div>
             <p class="placeholder-desc">
-              See class-wide comprehension trends across all sessions. Charts showing MCQ accuracy and self-rating distributions from all students.
+              Class-wide comprehension trends — MCQ accuracy and self-rating distributions across all sessions.
             </p>
             <span class="coming-tag">Coming soon</span>
           </div>
@@ -231,7 +443,7 @@
             <div class="placeholder-icon">🌡️</div>
             <div class="placeholder-title">Topic strength heatmap</div>
             <p class="placeholder-desc">
-              A color-coded view of every topic taught — green for strongly perceived, yellow for fuzzy, red for weak. Click any topic to drill down into card-level data.
+              A color-coded view — green for strongly perceived, yellow for fuzzy, red for weak topics.
             </p>
             <span class="coming-tag">Coming soon</span>
           </div>
@@ -243,13 +455,13 @@
             <div class="placeholder-icon">💡</div>
             <div class="placeholder-title">AI re-teaching suggestions</div>
             <p class="placeholder-desc">
-              Gemini will analyze the weakest topics from student responses and generate specific, actionable re-teaching recommendations for your next class.
+              Gemini will analyze weak topics and generate actionable re-teaching recommendations for your next class.
             </p>
             <span class="coming-tag">Coming soon</span>
           </div>
         </div>
 
-      </div>
+      </div><!-- end panel-body -->
     </main>
 
   </div><!-- end app-shell -->

@@ -6,6 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
   initPanelTabs();
+  initTranscriptForm();
 });
 
 // ── Sidebar collapse toggle ──────────────────────────────────
@@ -117,4 +118,53 @@ function switchPanel(panelId) {
   document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('panel-' + panelId);
   if (target) target.classList.add('active');
+}
+
+// ── Transcript form ──────────────────────────────────────────
+function initTranscriptForm() {
+  const textarea    = document.getElementById('transcript-input');
+  const charCount   = document.getElementById('char-count');
+  const generateBtn = document.getElementById('generate-btn');
+  const subjectIn   = document.getElementById('subject-input');
+  const topicIn     = document.getElementById('topic-input');
+  const dateIn      = document.getElementById('date-input');
+
+  if (!textarea) return;
+
+  // Prefill today's date
+  if (dateIn) {
+    const today = new Date().toISOString().split('T')[0];
+    dateIn.value = today;
+  }
+
+  // Character counter
+  function updateCharCount() {
+    const len = textarea.value.length;
+    const max = 15000;
+    const formatted = len.toLocaleString() + ' / 15,000';
+    if (charCount) {
+      charCount.textContent = formatted;
+      charCount.classList.toggle('warn', len > max * 0.85);
+    }
+    checkForm();
+  }
+
+  // Enable generate button only when required fields filled
+  function checkForm() {
+    const hasSubject    = subjectIn?.value.trim().length > 0;
+    const hasTopic      = topicIn?.value.trim().length > 0;
+    const hasTranscript = textarea.value.trim().length >= 50;
+    if (generateBtn) {
+      generateBtn.disabled = !(hasSubject && hasTopic && hasTranscript);
+    }
+  }
+
+  textarea.addEventListener('input', updateCharCount);
+  subjectIn?.addEventListener('input', checkForm);
+  topicIn?.addEventListener('input', checkForm);
+
+  // Generate button — placeholder until Gemini is wired up
+  generateBtn?.addEventListener('click', () => {
+    alert('Gemini AI integration coming soon!\nThe form data is ready — it just needs the API wired up.');
+  });
 }
