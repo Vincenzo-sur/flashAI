@@ -1,0 +1,126 @@
+/* ============================================================
+   EduFlash AI — Student Page Styles
+   Day 2: Entry shell
+   ============================================================ */
+
+.student-shell {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.student-entry-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+}
+
+.entry-icon {
+  font-size: 2.4rem;
+  margin-bottom: 16px;
+}
+
+.entry-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.entry-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+/* Class code input */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  margin-bottom: 16px;
+}
+.input-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.input-field {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  font-size: 0.9rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+  font-family: 'Roboto', sans-serif;
+}
+.input-field::placeholder { color: var(--text-dim); }
+.input-field:focus { border-color: var(--green); }
+
+/* Session picker (hidden until class code entered) */
+.session-picker {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.session-picker.visible { display: flex; }
+
+.session-option {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.session-option:hover { border-color: var(--green); background: var(--bg-hover); }
+.session-option.selected { border-color: var(--green); background: rgba(30,142,62,0.08); }
+
+.session-option-left {}
+.session-topic {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.session-date {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.session-cards-count {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.entry-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  font-size: 0.95rem;
+}
+
+.entry-note {
+  margin-top: 16px;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}

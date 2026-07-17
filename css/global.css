@@ -1,11 +1,12 @@
 /* ============================================================
    EduFlash AI — Global Styles
-   Day 1: Simple start, Google Classroom theme
+   Day 2: Unified nav shell + shared components
+   Google Classroom theme: green, yellow, dark
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap');
 
-/* ── CSS Variables (Google Classroom palette) ── */
+/* ── CSS Variables ── */
 :root {
   --green:        #1e8e3e;
   --green-light:  #34a853;
@@ -17,7 +18,9 @@
   --bg:           #202124;
   --bg-surface:   #292a2d;
   --bg-card:      #303134;
+  --bg-hover:     #3c4043;
   --border:       #3c4043;
+  --border-light: #4a4e54;
 
   --text:         #e8eaed;
   --text-muted:   #9aa0a6;
@@ -25,11 +28,11 @@
 
   --radius:    8px;
   --radius-lg: 12px;
+  --radius-sm: 4px;
   --transition: 0.2s ease;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; }
 
 body {
@@ -61,14 +64,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   font-size: 0.9rem;
   transition: var(--transition);
   cursor: pointer;
+  white-space: nowrap;
 }
-
 .btn-green {
   background: var(--green);
   color: #fff;
   border: 1px solid var(--green);
 }
-.btn-green:hover { background: var(--green-light); }
+.btn-green:hover { background: var(--green-light); border-color: var(--green-light); }
 
 .btn-yellow {
   background: var(--yellow);
@@ -83,19 +86,98 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
-.btn-outline:hover {
-  border-color: var(--green);
-  color: var(--green-light);
+.btn-outline:hover { border-color: var(--green); color: var(--green-light); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 8px 14px;
+}
+.btn-ghost:hover { color: var(--text); background: var(--bg-hover); border-radius: var(--radius-sm); }
+
+.btn-sm {
+  padding: 7px 16px;
+  font-size: 0.82rem;
 }
 
-/* ── Layout ── */
+/* ── Shared Navbar ── */
+.navbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0 24px;
+}
+.navbar-inner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text);
+}
+.nav-logo-icon {
+  width: 30px;
+  height: 30px;
+  background: var(--green);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.nav-logo em {
+  color: var(--yellow);
+  font-style: normal;
+}
+.nav-badge {
+  font-size: 0.7rem;
+  background: rgba(251,188,4,0.1);
+  color: var(--yellow);
+  border: 1px solid rgba(251,188,4,0.25);
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+}
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Layout helpers ── */
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* ── Utility ── */
+.text-muted  { color: var(--text-muted); }
+.text-dim    { color: var(--text-dim); }
+.text-green  { color: var(--green-light); }
+.text-yellow { color: var(--yellow); }
+.mt-sm  { margin-top: 8px; }
+.mt-md  { margin-top: 16px; }
+.mt-lg  { margin-top: 24px; }

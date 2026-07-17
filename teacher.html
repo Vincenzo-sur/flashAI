@@ -4,70 +4,256 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teacher Dashboard — EduFlash AI</title>
+  <meta name="description" content="Teacher dashboard — generate flashcards, manage sessions, view analytics." />
+
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
   <link rel="stylesheet" href="css/global.css" />
-  <style>
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      text-align: center;
-      gap: 16px;
-    }
-    .tag {
-      display: inline-block;
-      background: rgba(30,142,62,0.12);
-      color: var(--green-light);
-      border: 1px solid rgba(30,142,62,0.3);
-      border-radius: 6px;
-      padding: 5px 14px;
-      font-size: 0.78rem;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    h1 {
-      font-family: 'Google Sans', sans-serif;
-      font-size: 1.6rem;
-      color: var(--text);
-      margin-top: 8px;
-    }
-    p {
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      max-width: 380px;
-      line-height: 1.6;
-    }
-    .day-note {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--yellow);
-      border-radius: 6px;
-      padding: 12px 16px;
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      text-align: left;
-      max-width: 380px;
-    }
-    .day-note strong { color: var(--yellow); }
-  </style>
+  <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
-  <span class="tag">👩‍🏫 Teacher Dashboard</span>
-  <h1>Coming on Day 3</h1>
-  <p>
-    The teacher dashboard — with transcript input, Gemini flashcard generation,
-    session management, and analytics — is being built step by step.
-  </p>
-  <div class="day-note">
-    <strong>Day 3:</strong> Dashboard layout + sidebar nav<br>
-    <strong>Day 4:</strong> Transcript paste input<br>
-    <strong>Day 5:</strong> Gemini AI integration<br>
-    <strong>Day 6:</strong> Flashcard preview + editing
-  </div>
-  <a href="index.html" class="btn btn-outline" style="margin-top:8px;">← Back to home</a>
+
+  <!-- ── Shared Navbar ── -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="nav-logo" id="nav-logo">
+        <div class="nav-logo-icon">📚</div>
+        EduFlash <em>AI</em>
+      </a>
+      <div class="navbar-right">
+        <span class="nav-badge">Teacher</span>
+        <a href="student.html" class="btn btn-ghost btn-sm" id="nav-student-link">Switch to Student</a>
+        <a href="index.html"   class="btn btn-outline btn-sm" id="nav-home-link">Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── App Shell ── -->
+  <div class="app-shell">
+
+    <!-- ════════════════════════════
+         SIDEBAR WRAP
+    ════════════════════════════ -->
+    <div class="sidebar-wrap" id="sidebar-wrap">
+
+      <!-- Toggle button sits in the WRAP, never clipped by sidebar's overflow -->
+      <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Toggle sidebar">
+        ‹
+      </button>
+
+      <aside class="sidebar" id="sidebar">
+
+        <!-- Class info header -->
+        <div class="sidebar-header">
+          <div class="sidebar-class-icon">🏫</div>
+          <div class="sidebar-class-info">
+            <div class="sidebar-class-name">Physics — Batch A</div>
+            <div class="sidebar-class-code">Class code: ef-2024</div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav" aria-label="Teacher navigation">
+
+          <!-- ── 1. Generate ── -->
+          <div class="nav-section open" id="nav-generate">
+            <div class="nav-section-trigger active" data-label="Generate" id="trigger-generate">
+              <span class="nav-section-icon">✨</span>
+              <span class="nav-section-label">Generate</span>
+              <span class="nav-section-arrow">›</span>
+            </div>
+            <div class="nav-scroll-panel" id="scroll-generate">
+              <div class="nav-scroll-inner">
+                <div class="nav-sub-item active" data-panel="transcript" id="sub-transcript">
+                  <span class="nav-sub-dot"></span>
+                  Paste Transcript
+                </div>
+                <div class="nav-sub-item" data-panel="preview" id="sub-preview">
+                  <span class="nav-sub-dot"></span>
+                  Preview Cards
+                </div>
+                <div class="nav-sub-item" data-panel="publish" id="sub-publish">
+                  <span class="nav-sub-dot"></span>
+                  Publish to Class
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 2. Sessions ── -->
+          <div class="nav-section" id="nav-sessions">
+            <div class="nav-section-trigger" data-label="Sessions" id="trigger-sessions">
+              <span class="nav-section-icon">📋</span>
+              <span class="nav-section-label">Sessions</span>
+              <span class="nav-section-arrow">›</span>
+            </div>
+            <div class="nav-scroll-panel" id="scroll-sessions">
+              <div class="nav-scroll-inner">
+                <div class="nav-sub-item" data-panel="all-sessions" id="sub-all-sessions">
+                  <span class="nav-sub-dot"></span>
+                  All Sessions
+                </div>
+                <div class="nav-sub-item" data-panel="drafts" id="sub-drafts">
+                  <span class="nav-sub-dot"></span>
+                  Drafts
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 3. Analytics ── -->
+          <div class="nav-section" id="nav-analytics">
+            <div class="nav-section-trigger" data-label="Analytics" id="trigger-analytics">
+              <span class="nav-section-icon">📊</span>
+              <span class="nav-section-label">Analytics</span>
+              <span class="nav-section-arrow">›</span>
+            </div>
+            <div class="nav-scroll-panel" id="scroll-analytics">
+              <div class="nav-scroll-inner">
+                <div class="nav-sub-item" data-panel="overview" id="sub-overview">
+                  <span class="nav-sub-dot"></span>
+                  Overview
+                </div>
+                <div class="nav-sub-item" data-panel="topics" id="sub-topics">
+                  <span class="nav-sub-dot"></span>
+                  Topic Strength
+                </div>
+                <div class="nav-sub-item" data-panel="suggestions" id="sub-suggestions">
+                  <span class="nav-sub-dot"></span>
+                  AI Suggestions
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </nav>
+
+        <!-- Sidebar footer — user info -->
+        <div class="sidebar-footer">
+          <div class="sidebar-avatar">T</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name">Teacher Admin</div>
+            <div class="sidebar-user-role">Class Administrator</div>
+          </div>
+        </div>
+
+      </aside>
+    </div><!-- end sidebar-wrap -->
+
+    <!-- ════════════════════════════
+         MAIN CONTENT
+    ════════════════════════════ -->
+    <main class="main-content" id="main-content">
+
+      <!-- Top tab bar -->
+      <div class="panel-header" id="panel-header" role="tablist">
+        <div class="panel-tab active" data-panel="transcript" id="tab-transcript" role="tab">Paste Transcript</div>
+        <div class="panel-tab" data-panel="preview"    id="tab-preview"    role="tab">Preview Cards</div>
+        <div class="panel-tab" data-panel="publish"    id="tab-publish"    role="tab">Publish</div>
+      </div>
+
+      <div class="panel-body">
+
+        <!-- Panel: Paste Transcript -->
+        <div class="panel-content active" id="panel-transcript" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">📄</div>
+            <div class="placeholder-title">Paste your class transcript here</div>
+            <p class="placeholder-desc">
+              The transcript input area is coming soon. You'll be able to paste the full text of your class session and set the subject, topic, and date before generating flashcards.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: Preview Cards -->
+        <div class="panel-content" id="panel-preview" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">🃏</div>
+            <div class="placeholder-title">Flashcard preview</div>
+            <p class="placeholder-desc">
+              Once Gemini generates your flashcards, you'll see them here to review, edit, or delete before publishing. Each card will have a question, answer, and 4 MCQ options.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: Publish -->
+        <div class="panel-content" id="panel-publish" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">🚀</div>
+            <div class="placeholder-title">Publish to Google Classroom</div>
+            <p class="placeholder-desc">
+              After previewing your flashcards, publish them to your class. Students will be able to access and review them directly.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: All Sessions -->
+        <div class="panel-content" id="panel-all-sessions" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">📋</div>
+            <div class="placeholder-title">All published sessions</div>
+            <p class="placeholder-desc">
+              Every flashcard deck you've published will show up here with the date, topic, number of cards, and how many students have completed it.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: Drafts -->
+        <div class="panel-content" id="panel-drafts" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">📝</div>
+            <div class="placeholder-title">Draft sessions</div>
+            <p class="placeholder-desc">
+              Saved but unpublished flashcard decks will live here so you can come back and edit them before sending to students.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: Overview -->
+        <div class="panel-content" id="panel-overview" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">📊</div>
+            <div class="placeholder-title">Analytics overview</div>
+            <p class="placeholder-desc">
+              See class-wide comprehension trends across all sessions. Charts showing MCQ accuracy and self-rating distributions from all students.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: Topic Strength -->
+        <div class="panel-content" id="panel-topics" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">🌡️</div>
+            <div class="placeholder-title">Topic strength heatmap</div>
+            <p class="placeholder-desc">
+              A color-coded view of every topic taught — green for strongly perceived, yellow for fuzzy, red for weak. Click any topic to drill down into card-level data.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Panel: AI Suggestions -->
+        <div class="panel-content" id="panel-suggestions" role="tabpanel">
+          <div class="placeholder-state">
+            <div class="placeholder-icon">💡</div>
+            <div class="placeholder-title">AI re-teaching suggestions</div>
+            <p class="placeholder-desc">
+              Gemini will analyze the weakest topics from student responses and generate specific, actionable re-teaching recommendations for your next class.
+            </p>
+            <span class="coming-tag">Coming soon</span>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+  </div><!-- end app-shell -->
+
+  <script src="js/teacher.js"></script>
 </body>
 </html>

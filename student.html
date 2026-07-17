@@ -4,70 +4,122 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student View — EduFlash AI</title>
+  <meta name="description" content="Review your class flashcards, answer questions, and track your comprehension." />
+
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
   <link rel="stylesheet" href="css/global.css" />
-  <style>
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      text-align: center;
-      gap: 16px;
-    }
-    .tag {
-      display: inline-block;
-      background: rgba(251,188,4,0.1);
-      color: var(--yellow);
-      border: 1px solid rgba(251,188,4,0.3);
-      border-radius: 6px;
-      padding: 5px 14px;
-      font-size: 0.78rem;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    h1 {
-      font-family: 'Google Sans', sans-serif;
-      font-size: 1.6rem;
-      color: var(--text);
-      margin-top: 8px;
-    }
-    p {
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      max-width: 380px;
-      line-height: 1.6;
-    }
-    .day-note {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--green);
-      border-radius: 6px;
-      padding: 12px 16px;
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      text-align: left;
-      max-width: 380px;
-    }
-    .day-note strong { color: var(--green-light); }
-  </style>
+  <link rel="stylesheet" href="css/student.css" />
 </head>
 <body>
-  <span class="tag">🎒 Student View</span>
-  <h1>Coming on Day 8</h1>
-  <p>
-    The full student experience — flashcard viewer, MCQ questions,
-    self-rating, and a completion summary — is coming in Week 2.
-  </p>
-  <div class="day-note">
-    <strong>Day 8:</strong> Student entry + session selection<br>
-    <strong>Day 9:</strong> Flashcard carousel viewer<br>
-    <strong>Day 10:</strong> MCQ question system<br>
-    <strong>Day 11:</strong> Know it / Fuzzy / Don't know ratings
+
+  <!-- ── Shared Navbar ── -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="nav-logo" id="nav-logo">
+        <div class="nav-logo-icon">📚</div>
+        EduFlash <em>AI</em>
+      </a>
+      <div class="navbar-right">
+        <span class="nav-badge" style="background:rgba(251,188,4,0.1);color:var(--yellow);border-color:rgba(251,188,4,0.25);">Student</span>
+        <a href="teacher.html" class="btn btn-ghost btn-sm" id="nav-teacher-link">Switch to Teacher</a>
+        <a href="index.html"   class="btn btn-outline btn-sm" id="nav-home-link">Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Student entry shell ── -->
+  <div class="student-shell">
+    <div class="student-entry-card" id="entry-card">
+
+      <div class="entry-icon">🎒</div>
+      <h1 class="entry-title">Ready to review?</h1>
+      <p class="entry-sub">
+        Enter your class code to find today's flashcard session and start reviewing.
+      </p>
+
+      <!-- Class code input -->
+      <div class="input-group">
+        <label class="input-label" for="class-code-input">Class code</label>
+        <input
+          type="text"
+          id="class-code-input"
+          class="input-field"
+          placeholder="e.g. ef-2024"
+          maxlength="20"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <!-- Session picker (shows after code entered) -->
+      <div class="session-picker" id="session-picker">
+        <p class="input-label" style="margin-bottom:4px;">Select a session</p>
+
+        <div class="session-option" id="session-opt-1" data-session="1">
+          <div class="session-option-left">
+            <div class="session-topic">Newton's Laws of Motion</div>
+            <div class="session-date">Physics · Today</div>
+          </div>
+          <span class="session-cards-count">8 cards</span>
+        </div>
+
+        <div class="session-option" id="session-opt-2" data-session="2">
+          <div class="session-option-left">
+            <div class="session-topic">Work, Energy &amp; Power</div>
+            <div class="session-date">Physics · Yesterday</div>
+          </div>
+          <span class="session-cards-count">6 cards</span>
+        </div>
+
+      </div>
+
+      <button class="btn btn-green entry-btn" id="start-btn" disabled>
+        Start Review →
+      </button>
+
+      <p class="entry-note">
+        The full review experience is coming soon. For now this is the entry shell.
+      </p>
+
+    </div>
   </div>
-  <a href="index.html" class="btn btn-outline" style="margin-top:8px;">← Back to home</a>
+
+  <script>
+    // ── Simple entry flow interaction ──
+    const codeInput   = document.getElementById('class-code-input');
+    const picker      = document.getElementById('session-picker');
+    const startBtn    = document.getElementById('start-btn');
+    const sessionOpts = document.querySelectorAll('.session-option');
+    let selectedSession = null;
+
+    // Show session picker when class code matches
+    codeInput.addEventListener('input', () => {
+      const val = codeInput.value.trim().toLowerCase();
+      if (val === 'ef-2024' || val.length >= 4) {
+        picker.classList.add('visible');
+      } else {
+        picker.classList.remove('visible');
+        selectedSession = null;
+        startBtn.disabled = true;
+      }
+    });
+
+    // Session selection
+    sessionOpts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        sessionOpts.forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedSession = opt.dataset.session;
+        startBtn.disabled = false;
+      });
+    });
+
+    // Start button — placeholder for now
+    startBtn.addEventListener('click', () => {
+      if (!selectedSession) return;
+      alert('Flashcard viewer coming soon!');
+    });
+  </script>
+
 </body>
 </html>
