@@ -41,10 +41,11 @@ Teacher dashboard → weak topics vs strong topics
 - [x] Google Classroom color theme (green, yellow, dark)
 - [x] Interactive MCQ demo — click an option, see correct/wrong, card flips to answer
 - [x] Self-rating buttons — Know it / Fuzzy / Don't know
-- [ ] Teacher dashboard (in progress)
-- [ ] Gemini API integration (in progress)
-- [ ] Student flashcard viewer (in progress)
-- [ ] Analytics dashboard (planned)
+- [x] Teacher dashboard (with sidebar, active routing, draft/session views)
+- [x] Gemini API integration (with local settings modal and mock fallback)
+- [x] Student flashcard viewer (fully interactive review flow and scoring)
+- [x] Analytics dashboard (heatmap, aggregates, simulator, and advice)
+- [ ] Multimodal image upload (OCR text extraction & card generation from whiteboard/note photos)
 - [ ] Google OAuth (planned)
 - [ ] Google Classroom API (planned)
 
@@ -112,6 +113,19 @@ cd flashAI
   selfRating: "fuzzy"    // "know" | "fuzzy" | "dont-know"
 }
 ```
+
+## Development Roadmap
+
+- [x] **Day 1: Base Application & Interactive Landing Page**
+  - Design tokens, responsive components, and MCQ flip-card landing page widget.
+- [x] **Day 2: Dashboard shells & Navigation**
+  - Teacher dashboard structure, collapsible sidebar state, and student select views.
+- [x] **Day 3: Interactive Dashboards & Gemini Core (Current)**
+  - Local database store, Gemini API integrations, preview card editors, class performance analytics, and student reviews.
+- [ ] **Day 4: Multimodal Note OCR & Image uploads (Next)**
+  - Uploading screenshots/photos of notes. Utilizing Gemini's native multimodal endpoints to parse drawings, handwriting, and text directly into revision decks.
+- [ ] **Day 5: OAuth & Production sync**
+  - Adding Google login flow, Firebase real-time database, and Google Classroom REST API sync.
 
 ---
 

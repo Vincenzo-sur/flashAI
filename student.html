@@ -28,9 +28,9 @@
   </nav>
 
   <!-- ── Student entry shell ── -->
-  <div class="student-shell">
+  <div class="student-shell" style="flex-direction: column; gap: 20px;">
+    
     <div class="student-entry-card" id="entry-card">
-
       <div class="entry-icon">🎒</div>
       <h1 class="entry-title">Ready to review?</h1>
       <p class="entry-sub">
@@ -53,24 +53,10 @@
 
       <!-- Session picker (shows after code entered) -->
       <div class="session-picker" id="session-picker">
-        <p class="input-label" style="margin-bottom:4px;">Select a session</p>
-
-        <div class="session-option" id="session-opt-1" data-session="1">
-          <div class="session-option-left">
-            <div class="session-topic">Newton's Laws of Motion</div>
-            <div class="session-date">Physics · Today</div>
-          </div>
-          <span class="session-cards-count">8 cards</span>
+        <p class="input-label" style="margin-bottom:6px;">Select a session</p>
+        <div id="session-picker-options" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamically loaded session rows from local storage -->
         </div>
-
-        <div class="session-option" id="session-opt-2" data-session="2">
-          <div class="session-option-left">
-            <div class="session-topic">Work, Energy &amp; Power</div>
-            <div class="session-date">Physics · Yesterday</div>
-          </div>
-          <span class="session-cards-count">6 cards</span>
-        </div>
-
       </div>
 
       <button class="btn btn-green entry-btn" id="start-btn" disabled>
@@ -78,48 +64,92 @@
       </button>
 
       <p class="entry-note">
-        The full review experience is coming soon. For now this is the entry shell.
+        💡 Use class code <strong>ef-2024</strong> or any text to search sessions.
       </p>
-
     </div>
+
+    <!-- ── Student Active Reviewer Container (hidden by default) ── -->
+    <div class="student-active-review" id="review-container">
+      <!-- Progress Bar -->
+      <div class="review-progress-container">
+        <div class="review-progress-label">
+          <span id="review-progress-text">Card 1 of 5</span>
+          <span id="review-progress-percent">20%</span>
+        </div>
+        <div class="review-progress-bar-bg">
+          <div class="review-progress-bar-fill" id="review-progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- Review Card -->
+      <div class="flashcard" id="review-flashcard">
+        <!-- Header -->
+        <div class="card-header" id="card-header-click" title="Click to flip">
+          <span class="card-header-label" id="card-label">Question</span>
+          <span class="card-header-tag" id="card-tag">Topic</span>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body">
+          <!-- Front -->
+          <div class="card-body-front" id="card-front">
+            <p class="card-question" id="review-question">
+              Question text will load here.
+            </p>
+            <div class="mcq-options" id="review-options">
+              <!-- Dynamically populated options -->
+            </div>
+            <p class="card-flip-hint">Select an option to answer, or click header to flip</p>
+          </div>
+
+          <!-- Back -->
+          <div class="card-body-back" id="card-back">
+            <p class="card-answer-label">Correct Answer</p>
+            <p class="card-answer-text" id="review-answer">
+              Answer explanation text.
+            </p>
+            <p style="font-size: 0.76rem; color: var(--text-dim); margin-bottom: 12px; text-align: center;">
+              How well did you know this?
+            </p>
+            <div class="self-rating" id="review-self-rating">
+              <button class="rating-btn know" data-rating="know">✓ Know it</button>
+              <button class="rating-btn fuzzy" data-rating="fuzzy">~ Fuzzy</button>
+              <button class="rating-btn nope" data-rating="nope">✗ Don't know</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Footer -->
+      <div class="card-nav">
+        <button class="card-nav-btn" id="review-prev-btn" disabled>← Previous</button>
+        <span class="card-counter" id="review-counter">1 / 5</span>
+        <button class="card-nav-btn" id="review-next-btn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <!-- ── Completion Card (hidden by default) ── -->
+    <div class="review-completed" id="completion-container">
+      <div class="entry-icon">🎉</div>
+      <h1 class="entry-title">Review Completed!</h1>
+      <p class="entry-sub" style="margin-bottom: 12px;">
+        Great job revising! Your responses have been sent back to the teacher's dashboard.
+      </p>
+      
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; width: 100%; margin-bottom: 20px;">
+        <span style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase;">MCQ ACCURACY</span>
+        <div class="completion-accuracy" id="completion-accuracy">85%</div>
+      </div>
+
+      <button class="btn btn-green entry-btn" id="exit-btn">
+        Done &amp; Exit
+      </button>
+    </div>
+
   </div>
 
-  <script>
-    // ── Simple entry flow interaction ──
-    const codeInput   = document.getElementById('class-code-input');
-    const picker      = document.getElementById('session-picker');
-    const startBtn    = document.getElementById('start-btn');
-    const sessionOpts = document.querySelectorAll('.session-option');
-    let selectedSession = null;
-
-    // Show session picker when class code matches
-    codeInput.addEventListener('input', () => {
-      const val = codeInput.value.trim().toLowerCase();
-      if (val === 'ef-2024' || val.length >= 4) {
-        picker.classList.add('visible');
-      } else {
-        picker.classList.remove('visible');
-        selectedSession = null;
-        startBtn.disabled = true;
-      }
-    });
-
-    // Session selection
-    sessionOpts.forEach(opt => {
-      opt.addEventListener('click', () => {
-        sessionOpts.forEach(o => o.classList.remove('selected'));
-        opt.classList.add('selected');
-        selectedSession = opt.dataset.session;
-        startBtn.disabled = false;
-      });
-    });
-
-    // Start button — placeholder for now
-    startBtn.addEventListener('click', () => {
-      if (!selectedSession) return;
-      alert('Flashcard viewer coming soon!');
-    });
-  </script>
+  <script src="js/store.js"></script>
+  <script src="js/student.js"></script>
 
 </body>
 </html>

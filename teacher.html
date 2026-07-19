@@ -128,12 +128,15 @@
         </nav>
 
         <!-- Sidebar footer — user info -->
-        <div class="sidebar-footer">
-          <div class="sidebar-avatar">T</div>
-          <div class="sidebar-user-info">
-            <div class="sidebar-user-name">Teacher Admin</div>
-            <div class="sidebar-user-role">Class Administrator</div>
+        <div class="sidebar-footer" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+            <div class="sidebar-avatar">T</div>
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-name">Teacher Admin</div>
+              <div class="sidebar-user-role">Class Administrator</div>
+            </div>
           </div>
+          <button id="sidebar-settings-btn" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted); transition: color var(--transition); padding: 4px;" title="Gemini API Settings">⚙️</button>
         </div>
 
       </aside>
@@ -228,25 +231,39 @@
 
         <!-- Panel: Preview Cards -->
         <div class="panel-content" id="panel-preview" role="tabpanel">
-          <div class="placeholder-state">
+          <div id="preview-placeholder" class="placeholder-state">
             <div class="placeholder-icon">🃏</div>
             <div class="placeholder-title">Flashcard preview</div>
             <p class="placeholder-desc">
               Once Gemini generates your flashcards, you'll see them here to review, edit, or delete before publishing.
             </p>
-            <span class="coming-tag">Coming soon</span>
+          </div>
+          <div id="preview-active" style="display: none;">
+            <div class="sessions-toolbar" style="margin-bottom: 24px;">
+              <div>
+                <span class="sessions-title" id="preview-session-title">Newton's Laws of Motion</span>
+                <span class="sessions-count" id="preview-cards-count">0 cards</span>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn btn-outline btn-sm" id="preview-add-btn">+ Add Card</button>
+                <button class="btn btn-green btn-sm" id="preview-publish-btn">🚀 Publish to Class</button>
+              </div>
+            </div>
+            <div class="preview-cards-list" id="preview-list-container">
+              <!-- Dynamically populated card items -->
+            </div>
           </div>
         </div>
 
         <!-- Panel: Publish -->
         <div class="panel-content" id="panel-publish" role="tabpanel">
           <div class="placeholder-state">
-            <div class="placeholder-icon">🚀</div>
-            <div class="placeholder-title">Publish to Google Classroom</div>
+            <div class="placeholder-icon" style="color: var(--green-light);">🚀</div>
+            <div class="placeholder-title">Session published successfully!</div>
             <p class="placeholder-desc">
-              After reviewing your flashcards, publish the deck to your class. Students will see it in their session list.
+              Your revision cards are now live. Students can select this session using the class code and start reviewing them.
             </p>
-            <span class="coming-tag">Coming soon</span>
+            <button class="btn btn-green btn-sm" id="publish-view-sessions-btn">View Active Sessions</button>
           </div>
         </div>
 
@@ -427,37 +444,63 @@
 
         <!-- Panel: Overview -->
         <div class="panel-content" id="panel-overview" role="tabpanel">
-          <div class="placeholder-state">
-            <div class="placeholder-icon">📊</div>
-            <div class="placeholder-title">Analytics overview</div>
-            <p class="placeholder-desc">
-              Class-wide comprehension trends — MCQ accuracy and self-rating distributions across all sessions.
-            </p>
-            <span class="coming-tag">Coming soon</span>
+          <!-- Simulation Banner -->
+          <div class="simulator-panel" id="simulator-banner">
+            <div class="simulator-info">
+              <div class="simulator-title">✨ Student Submission Simulator</div>
+              <div class="simulator-desc">Simulate mock responses from a class of 15 students to test analytics.</div>
+            </div>
+            <button class="btn btn-yellow btn-sm" id="simulate-answers-btn">Simulate Responses</button>
+          </div>
+
+          <div class="analytics-grid">
+            <div class="analytics-stat-card">
+              <span class="stat-card-title">Average MCQ Accuracy</span>
+              <span class="stat-card-val" id="stat-avg-accuracy">0%</span>
+              <span class="stat-card-trend up" id="stat-accuracy-trend">---</span>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="stat-card-title">Total Submissions</span>
+              <span class="stat-card-val" id="stat-participation">0</span>
+              <span class="stat-card-trend" id="stat-participation-desc">Across all live/closed decks</span>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="stat-card-title">Topic Coverage</span>
+              <span class="stat-card-val" id="stat-confidence">0</span>
+              <span class="stat-card-trend" id="stat-confidence-desc">Unique topics mapped</span>
+            </div>
+          </div>
+
+          <h3 style="font-family: 'Google Sans', sans-serif; font-size: 1rem; margin-bottom: 12px;">Active Sessions Performance</h3>
+          <div class="session-list" id="analytics-sessions-list">
+            <!-- Dynamic session stats rows -->
           </div>
         </div>
 
         <!-- Panel: Topic Strength -->
         <div class="panel-content" id="panel-topics" role="tabpanel">
-          <div class="placeholder-state">
-            <div class="placeholder-icon">🌡️</div>
-            <div class="placeholder-title">Topic strength heatmap</div>
-            <p class="placeholder-desc">
-              A color-coded view — green for strongly perceived, yellow for fuzzy, red for weak topics.
-            </p>
-            <span class="coming-tag">Coming soon</span>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">
+            Heatmap showing student accuracy and self-reported confidence by topic.
+          </p>
+          <div class="topic-strength-list" id="topic-strength-list-container">
+            <!-- Dynamic topic rows -->
           </div>
         </div>
 
         <!-- Panel: AI Suggestions -->
         <div class="panel-content" id="panel-suggestions" role="tabpanel">
-          <div class="placeholder-state">
-            <div class="placeholder-icon">💡</div>
-            <div class="placeholder-title">AI re-teaching suggestions</div>
-            <p class="placeholder-desc">
-              Gemini will analyze weak topics and generate actionable re-teaching recommendations for your next class.
-            </p>
-            <span class="coming-tag">Coming soon</span>
+          <div class="sessions-toolbar" style="margin-bottom: 20px;">
+            <div>
+              <span class="sessions-title">AI Re-teaching Recommendations</span>
+              <span class="sessions-count">Powered by Gemini AI</span>
+            </div>
+            <button class="btn btn-green btn-sm" id="btn-refresh-suggestions">💡 Generate Advice</button>
+          </div>
+          <p id="suggestions-loading" style="display: none; font-size: 0.85rem; color: var(--yellow); margin-bottom: 16px;">
+            Gemini is analyzing student performance data...
+          </p>
+          <div class="suggestions-list" id="suggestions-list-container">
+            <!-- Dynamic suggestions cards -->
           </div>
         </div>
 
@@ -466,6 +509,35 @@
 
   </div><!-- end app-shell -->
 
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ Gemini API Settings</h3>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px;">
+          EduFlash AI uses Google Gemini to generate revision flashcards from your transcripts.
+          Enter your API key below. It is stored securely in your browser's local storage.
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="api-key-input">Gemini API Key</label>
+          <input type="password" id="api-key-input" class="form-input" placeholder="AIzaSy..." />
+          <p style="font-size: 0.72rem; color: var(--text-dim); margin-top: 4px;">
+            Don't have a key? Get one from <a href="https://aistudio.google.com/" target="_blank" style="color: var(--green-light); text-decoration: underline;">Google AI Studio</a>.
+            If left blank, the app will fall back to a mock generator for testing.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-sm" id="modal-cancel-btn">Cancel</button>
+        <button class="btn btn-green btn-sm" id="modal-save-btn">Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>
