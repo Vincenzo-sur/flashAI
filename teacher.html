@@ -67,6 +67,11 @@
                   <span class="nav-sub-dot"></span>
                   Paste Transcript
                 </div>
+                <div class="nav-sub-item" data-panel="upload" id="sub-upload">
+                  <span class="nav-sub-dot"></span>
+                  Upload Notes
+                  <span class="nav-sub-badge">New</span>
+                </div>
                 <div class="nav-sub-item" data-panel="preview" id="sub-preview">
                   <span class="nav-sub-dot"></span>
                   Preview Cards
@@ -169,6 +174,7 @@
       <!-- Top tab bar -->
       <div class="panel-header" id="panel-header" role="tablist">
         <div class="panel-tab active" data-panel="transcript" id="tab-transcript" role="tab">Paste Transcript</div>
+        <div class="panel-tab" data-panel="upload"     id="tab-upload"     role="tab">Upload Notes ✨</div>
         <div class="panel-tab" data-panel="preview"    id="tab-preview"    role="tab">Preview Cards</div>
         <div class="panel-tab" data-panel="publish"    id="tab-publish"    role="tab">Publish</div>
       </div>
@@ -226,6 +232,86 @@
                 the form is ready and waiting.
               </p>
             </div>
+          </div>
+        </div>
+
+        <!-- Panel: Upload Notes -->
+        <div class="panel-content" id="panel-upload" role="tabpanel">
+
+          <div class="generate-welcome">
+            <div class="generate-welcome-icon">📸</div>
+            <h2>Upload Notes or Whiteboard Photos</h2>
+            <p>
+              Drag and drop up to 4 images of your notes, whiteboard, or printed slides.<br />
+              Gemini AI will read them and generate revision flashcards automatically.
+            </p>
+          </div>
+
+          <!-- Coming tomorrow hint banner -->
+          <div class="upload-coming-banner" id="upload-coming-banner">
+            <span class="upload-coming-icon">🔧</span>
+            <div>
+              <div class="upload-coming-title">Gemini Vision API coming tomorrow (Day 5)</div>
+              <div class="upload-coming-desc">The UI is fully ready — upload images and check the preview. AI card generation will be wired up next session.</div>
+            </div>
+          </div>
+
+          <div class="upload-form" id="upload-form">
+
+            <!-- Form meta fields -->
+            <div class="form-row" style="max-width: 720px; margin-bottom: 20px;">
+              <div class="form-group">
+                <label class="form-label" for="upload-subject-input">Subject</label>
+                <input type="text" id="upload-subject-input" class="form-input" placeholder="e.g. Physics" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="upload-topic-input">Topic</label>
+                <input type="text" id="upload-topic-input" class="form-input" placeholder="e.g. Newton's Laws" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="upload-date-input">Session date</label>
+                <input type="date" id="upload-date-input" class="form-input" />
+              </div>
+            </div>
+
+            <!-- Dropzone -->
+            <div class="upload-dropzone" id="upload-dropzone" tabindex="0" role="button" aria-label="Upload image files">
+              <div class="upload-dropzone-inner">
+                <div class="upload-dropzone-icon">🖼️</div>
+                <div class="upload-dropzone-title">Drop images here or click to browse</div>
+                <div class="upload-dropzone-hint">JPG, PNG, WEBP &bull; Up to 4 images &bull; Max 5 MB each</div>
+              </div>
+              <!-- Hidden file input -->
+              <input
+                type="file"
+                id="upload-file-input"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                style="display: none;"
+              />
+            </div>
+
+            <!-- Status bar (visible when files are loaded) -->
+            <div class="upload-status-bar" id="upload-status-bar" style="display: none;">
+              <span id="upload-file-count">0 images selected</span>
+              <button class="upload-clear-btn" id="upload-clear-btn" title="Clear all images">✕ Clear all</button>
+            </div>
+
+            <!-- Thumbnail preview strip -->
+            <div class="upload-preview-strip" id="upload-preview-strip" style="display: none;">
+              <!-- Thumbnails injected by JS -->
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions" style="margin-top: 20px;">
+              <button class="btn btn-green" id="upload-generate-btn" disabled>
+                ✨ Generate from Images
+              </button>
+              <p class="form-hint" id="upload-hint-text">
+                Upload images above to enable generation.
+              </p>
+            </div>
+
           </div>
         </div>
 

@@ -1180,3 +1180,270 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   DAY 4: UPLOAD NOTES PANEL
+   ============================================================ */
+
+/* ── Sidebar "New" badge ── */
+.nav-sub-badge {
+  margin-left: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(30, 142, 62, 0.18);
+  color: var(--green-light);
+  border: 1px solid rgba(30, 142, 62, 0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  text-transform: uppercase;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+/* ── Coming-tomorrow banner ── */
+.upload-coming-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: rgba(251, 188, 4, 0.04);
+  border: 1px dashed rgba(251, 188, 4, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  max-width: 720px;
+}
+.upload-coming-icon {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+.upload-coming-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--yellow);
+  margin-bottom: 3px;
+}
+.upload-coming-desc {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ── Upload form container ── */
+.upload-form {
+  max-width: 720px;
+}
+
+/* ── Drop zone ── */
+.upload-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+  position: relative;
+  outline: none;
+  overflow: hidden;
+}
+
+/* Ambient glow on hover */
+.upload-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, rgba(30, 142, 62, 0.07) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.upload-dropzone:hover::before,
+.upload-dropzone:focus::before {
+  opacity: 1;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(30, 142, 62, 0.08), 0 4px 20px rgba(30, 142, 62, 0.1);
+}
+
+/* Drag-over state — glows brighter */
+.upload-dropzone.drag-over {
+  border-color: var(--green-light);
+  background: rgba(30, 142, 62, 0.06);
+  box-shadow: 0 0 0 4px rgba(30, 142, 62, 0.12), 0 6px 28px rgba(30, 142, 62, 0.18);
+  transform: scale(1.005);
+}
+.upload-dropzone.drag-over::before {
+  opacity: 1;
+}
+
+/* Max files reached — lock with muted style */
+.upload-dropzone.max-reached {
+  cursor: not-allowed;
+  border-color: var(--border);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.upload-dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 40px 24px;
+  pointer-events: none; /* clicks pass through to the parent */
+}
+.upload-dropzone-icon {
+  font-size: 2.6rem;
+  line-height: 1;
+  filter: grayscale(0.3);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+}
+.upload-dropzone:hover .upload-dropzone-icon,
+.upload-dropzone.drag-over .upload-dropzone-icon {
+  transform: translateY(-4px) scale(1.08);
+  filter: grayscale(0);
+}
+.upload-dropzone-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+.upload-dropzone:hover .upload-dropzone-title,
+.upload-dropzone.drag-over .upload-dropzone-title {
+  color: var(--green-light);
+}
+.upload-dropzone-hint {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ── Status bar ── */
+.upload-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 10px;
+}
+.upload-clear-btn {
+  font-size: 0.76rem;
+  background: transparent;
+  border: 1px solid rgba(242, 139, 130, 0.25);
+  color: #f28b82;
+  border-radius: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.upload-clear-btn:hover {
+  background: rgba(242, 139, 130, 0.08);
+  border-color: rgba(242, 139, 130, 0.5);
+}
+
+/* ── Thumbnail Preview Strip ── */
+.upload-preview-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 6px;
+  padding: 4px 0;
+}
+
+.upload-thumb {
+  position: relative;
+  width: 128px;
+  height: 96px;
+  border-radius: var(--radius);
+  overflow: visible; /* so × button is not clipped */
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+  animation: thumbFadeIn 0.3s cubic-bezier(0.34, 1.12, 0.64, 1) both;
+}
+@keyframes thumbFadeIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.upload-thumb:hover {
+  border-color: var(--green);
+  box-shadow: 0 4px 16px rgba(30, 142, 62, 0.15);
+}
+
+.upload-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--radius) - 1px);
+  display: block;
+}
+
+/* Overlay label at bottom of thumb */
+.upload-thumb-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.72));
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 6px 6px 5px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+}
+
+/* Remove button — top-right corner */
+.upload-thumb-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  background: #f28b82;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+  line-height: 1;
+}
+.upload-thumb-remove:hover {
+  background: #e53935;
+  transform: scale(1.15);
+}
+
+/* ── Disabled generate button hint ── */
+#upload-hint-text {
+  transition: color 0.3s ease;
+}
+
+@media (max-width: 600px) {
+  .upload-dropzone-inner { padding: 28px 16px; }
+  .upload-preview-strip  { gap: 10px; }
+  .upload-thumb          { width: 100px; height: 76px; }
+}

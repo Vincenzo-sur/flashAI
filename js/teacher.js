@@ -1,6 +1,7 @@
 // ============================================================
 //  EduFlash AI — Teacher Dashboard JS
 //  Day 3: Full logic including Gemini, Preview, Sessions, Analytics
+//  Day 4: Upload Notes panel UI (Gemini vision API wired on Day 5)
 // ============================================================
 
 let tempSession = null; // Holds the currently generated but unpublished session
@@ -11,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTranscriptForm();
   initApiKeySettings();
   initSimulator();
+  initUploadPanel();
   renderAllSessions();
   renderAnalytics();
   
@@ -115,7 +117,7 @@ function switchPanel(panelId) {
   // Handle visibility of top tab header bar (only display for Generate steps)
   const tabHeader = document.getElementById('panel-header');
   if (tabHeader) {
-    const isGeneratePanel = ['transcript', 'preview', 'publish'].includes(panelId);
+    const isGeneratePanel = ['transcript', 'upload', 'preview', 'publish'].includes(panelId);
     tabHeader.style.display = isGeneratePanel ? 'flex' : 'none';
   }
 
@@ -1154,4 +1156,221 @@ function escapeHTML(str) {
       '"': '&quot;'
     }[tag] || tag)
   );
+}
+
+// ── Upload Notes Panel ─────────────────────────────────────
+// Day 4: Full UI wiring — drag-and-drop, file picker, thumbnails
+// Gemini multimodal API call will be wired on Day 5.
+
+function initUploadPanel() {
+  const dropzone      = document.getElementById('upload-dropzone');
+  const fileInput     = document.getElementById('upload-file-input');
+  const previewStrip  = document.getElementById('upload-preview-strip');
+  const statusBar     = document.getElementById('upload-status-bar');
+  const fileCountEl   = document.getElementById('upload-file-count');
+  const clearBtn      = document.getElementById('upload-clear-btn');
+  const generateBtn   = document.getElementById('upload-generate-btn');
+  const hintText      = document.getElementById('upload-hint-text');
+  const subjectIn     = document.getElementById('upload-subject-input');
+  const topicIn       = document.getElementById('upload-topic-input');
+  const dateIn        = document.getElementById('upload-date-input');
+
+  if (!dropzone) return;
+
+  // Set today's date default
+  if (dateIn) {
+    dateIn.value = new Date().toISOString().split('T')[0];
+  }
+
+  const MAX_FILES   = 4;
+  const MAX_SIZE_MB = 5;
+  const ALLOWED     = ['image/jpeg', 'image/png', 'image/webp'];
+
+  // Internal list of accepted File objects
+  let uploadedFiles = [];
+
+  // ── Drag-and-drop events ──────────────────────────────
+  dropzone.addEventListener('click', (e) => {
+    // Don't re-trigger if clicking the remove button area
+    if (e.target.closest('.upload-thumb-remove')) return;
+    if (uploadedFiles.length < MAX_FILES) {
+      fileInput.click();
+    }
+  });
+
+  dropzone.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && uploadedFiles.length < MAX_FILES) {
+      fileInput.click();
+    }
+  });
+
+  dropzone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    if (uploadedFiles.length < MAX_FILES) dropzone.classList.add('drag-over');
+  });
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (uploadedFiles.length < MAX_FILES) dropzone.classList.add('drag-over');
+  });
+  dropzone.addEventListener('dragleave', (e) => {
+    // Only remove if leaving the dropzone entirely (not a child)
+    if (!dropzone.contains(e.relatedTarget)) {
+      dropzone.classList.remove('drag-over');
+    }
+  });
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files);
+    processNewFiles(files);
+  });
+
+  // ── File input change ─────────────────────────────────
+  fileInput.addEventListener('change', () => {
+    const files = Array.from(fileInput.files);
+    processNewFiles(files);
+    fileInput.value = ''; // reset so same file can be re-added after remove
+  });
+
+  // ── Clear all button ──────────────────────────────────
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearAll();
+  });
+
+  // ── Form input changes — recheck button state ─────────
+  subjectIn?.addEventListener('input', updateButtonState);
+  topicIn?.addEventListener('input', updateButtonState);
+
+  // ─────────────────────────────────────────────────────
+  // Core helpers
+  // ─────────────────────────────────────────────────────
+
+  function processNewFiles(files) {
+    let rejected = [];
+    
+    files.forEach(file => {
+      if (uploadedFiles.length >= MAX_FILES) {
+        rejected.push(`${file.name} — max ${MAX_FILES} images reached`);
+        return;
+      }
+      if (!ALLOWED.includes(file.type)) {
+        rejected.push(`${file.name} — unsupported type (use JPG, PNG, or WEBP)`);
+        return;
+      }
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        rejected.push(`${file.name} — exceeds ${MAX_SIZE_MB} MB limit`);
+        return;
+      }
+      // Avoid duplicates by name+size fingerprint
+      const fp = file.name + file.size;
+      if (uploadedFiles.some(f => f.name + f.size === fp)) {
+        return; // silently skip duplicate
+      }
+      uploadedFiles.push(file);
+    });
+
+    if (rejected.length > 0) {
+      alert('Some files were skipped:\n\n' + rejected.join('\n'));
+    }
+
+    renderThumbnails();
+    updateUI();
+  }
+
+  function renderThumbnails() {
+    previewStrip.innerHTML = '';
+
+    uploadedFiles.forEach((file, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'upload-thumb';
+      thumb.id = `upload-thumb-${idx}`;
+
+      const img = document.createElement('img');
+      img.alt = file.name;
+      img.src = URL.createObjectURL(file);
+
+      const label = document.createElement('div');
+      label.className = 'upload-thumb-label';
+      // Truncate to 18 chars for the overlay
+      label.textContent = file.name.length > 18
+        ? file.name.substring(0, 16) + '…'
+        : file.name;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'upload-thumb-remove';
+      removeBtn.title = `Remove ${file.name}`;
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFile(idx);
+      });
+
+      thumb.appendChild(img);
+      thumb.appendChild(label);
+      thumb.appendChild(removeBtn);
+      previewStrip.appendChild(thumb);
+    });
+  }
+
+  function removeFile(idx) {
+    // Revoke the object URL to free memory
+    const thumbImg = document.querySelector(`#upload-thumb-${idx} img`);
+    if (thumbImg) URL.revokeObjectURL(thumbImg.src);
+
+    uploadedFiles.splice(idx, 1);
+    renderThumbnails();
+    updateUI();
+  }
+
+  function clearAll() {
+    // Revoke all object URLs
+    document.querySelectorAll('.upload-thumb img').forEach(img => {
+      URL.revokeObjectURL(img.src);
+    });
+    uploadedFiles = [];
+    renderThumbnails();
+    updateUI();
+  }
+
+  function updateUI() {
+    const count = uploadedFiles.length;
+
+    // Toggle status bar + strip
+    const hasFiles = count > 0;
+    statusBar.style.display    = hasFiles ? 'flex' : 'none';
+    previewStrip.style.display = hasFiles ? 'flex' : 'none';
+
+    // Update count label
+    fileCountEl.textContent = count === 1
+      ? '1 image selected'
+      : `${count} images selected`;
+
+    // Toggle max-reached lock on dropzone
+    dropzone.classList.toggle('max-reached', count >= MAX_FILES);
+
+    updateButtonState();
+  }
+
+  function updateButtonState() {
+    const hasFiles  = uploadedFiles.length > 0;
+    const hasSubject = subjectIn?.value.trim().length > 0;
+    const hasTopic   = topicIn?.value.trim().length > 0;
+
+    // Button is disabled until API is wired (Day 5)
+    // We still track readiness to give helpful hint text
+    const isReady = hasFiles && hasSubject && hasTopic;
+    generateBtn.disabled = true; // Always disabled until Day 5
+
+    if (!hasFiles) {
+      hintText.textContent = 'Upload images above to enable generation.';
+      hintText.style.color = '';
+    } else if (!hasSubject || !hasTopic) {
+      hintText.textContent = 'Fill in Subject and Topic to continue.';
+      hintText.style.color = 'var(--yellow)';
+    } else {
+      hintText.textContent = '✓ Ready! Gemini Vision API will be connected on Day 5.';
+      hintText.style.color = 'var(--green-light)';
+    }
+  }
 }
