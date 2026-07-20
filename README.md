@@ -46,8 +46,8 @@ Teacher dashboard → weak topics vs strong topics
 - [x] Student flashcard viewer (fully interactive review flow and scoring)
 - [x] Analytics dashboard (heatmap, aggregates, simulator, and advice)
 - [x] Upload Notes panel — drag-and-drop dropzone, thumbnail strip with remove, file validation (JPG/PNG/WEBP, 4 images, 5 MB)
-- [ ] Gemini multimodal vision API call (image → flashcards) — Day 5
-- [ ] Google OAuth (planned)
+- [x] Gemini Vision multimodal API — image(s) → flashcards with base64 inlineData (Day 5)
+- [x] Google OAuth sign-in — Google Identity Services modal with mock user picker and persistent session (Day 5)
 - [ ] Google Classroom API (planned)
 
 ---
@@ -125,8 +125,9 @@ cd flashAI
   - Local database store, Gemini API integrations, preview card editors, class performance analytics, and student reviews.
 - [x] **Day 4: Multimodal Note OCR & Image uploads (Current)**
   - Drag-and-drop Upload Notes panel with file picker, thumbnail strip, type/size/count validation. Gemini Vision API call coming Day 5.
-- [ ] **Day 5: Gemini Vision API & OAuth**
-  - Wire multimodal image→flashcard generation. Adding Google login flow, Firebase real-time database, and Google Classroom REST API sync.
+- [x] **Day 5: Gemini Vision API & Google OAuth (Current)**
+  - Wired multimodal image→flashcard generation using `inlineData` base64 parts sent to `gemini-1.5-flash`.
+  - Google Identity Services (GSI) sign-in modal with 3-user mock picker, persistent `localStorage` session, avatar/name sidebar injection, and sign-out flow.
 
 ---
 

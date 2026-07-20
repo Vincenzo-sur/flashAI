@@ -1447,3 +1447,262 @@
   .upload-preview-strip  { gap: 10px; }
   .upload-thumb          { width: 100px; height: 76px; }
 }
+
+/* ════════════════════════════════════════════
+   DAY 5 — GOOGLE AUTH MODAL STYLES
+   ════════════════════════════════════════════ */
+
+/* ── Sidebar avatar with photo ── */
+.sidebar-avatar {
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+.sidebar-avatar:hover {
+  box-shadow: 0 0 0 2px var(--green-light);
+}
+.sidebar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* ── Mock sign-in overlay (full-screen backdrop) ── */
+.mock-signin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.mock-signin-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Sign-in card ── */
+.mock-signin-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
+  transform: translateY(12px) scale(0.97);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mock-signin-overlay.active .mock-signin-card {
+  transform: translateY(0) scale(1);
+}
+
+/* Account modal card variant */
+.account-modal-card {
+  gap: 20px;
+}
+
+/* ── Card header ── */
+.mock-signin-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  width: 100%;
+}
+.mock-signin-logo {
+  width: 52px;
+  height: 52px;
+  background: var(--green-dark);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  border: 1px solid rgba(30,142,62,0.4);
+  margin-bottom: 4px;
+}
+.mock-signin-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.mock-signin-title em {
+  color: var(--yellow);
+  font-style: normal;
+}
+.mock-signin-sub {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+/* ── User list (mock user picker) ── */
+.mock-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.mock-user-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+.mock-user-row:hover {
+  border-color: var(--green);
+  background: rgba(30,142,62,0.07);
+  transform: translateY(-1px);
+}
+.mock-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.mock-user-info {
+  flex: 1;
+  overflow: hidden;
+}
+.mock-user-name {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mock-user-email {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mock-user-check {
+  font-size: 1rem;
+  color: var(--text-dim);
+  transition: color var(--transition), transform var(--transition);
+}
+.mock-user-row:hover .mock-user-check {
+  color: var(--green-light);
+  transform: translateX(3px);
+}
+
+/* ── Footer buttons ── */
+.mock-signin-footer {
+  width: 100%;
+}
+.mock-guest-btn {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+.mock-guest-btn:hover {
+  border-color: var(--border-light);
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* ── Demo notice ── */
+.mock-demo-notice {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 8px 12px;
+  background: rgba(251,188,4,0.05);
+  border: 1px solid rgba(251,188,4,0.12);
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+/* ── Account modal avatar ── */
+.account-avatar-large {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  border: 2px solid rgba(52,168,83,0.4);
+  margin-bottom: 2px;
+}
+.account-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-role-tag {
+  display: inline-block;
+  background: rgba(30,142,62,0.1);
+  color: var(--green-light);
+  border: 1px solid rgba(30,142,62,0.25);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+/* ── Navbar sign-in button ── */
+#nav-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+#nav-signin-btn.signed-in {
+  border-color: rgba(52,168,83,0.3);
+  color: var(--green-light);
+}
+
+/* ── Upload panel — generating pulse state ── */
+.upload-dropzone.generating {
+  border-color: var(--green);
+  animation: upload-pulse 1.8s ease-in-out infinite;
+}
+@keyframes upload-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(30,142,62,0); }
+  50%       { box-shadow: 0 0 0 8px rgba(30,142,62,0.15); }
+}
+

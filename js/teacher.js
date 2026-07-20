@@ -1160,7 +1160,7 @@ function escapeHTML(str) {
 
 // ── Upload Notes Panel ─────────────────────────────────────
 // Day 4: Full UI wiring — drag-and-drop, file picker, thumbnails
-// Gemini multimodal API call will be wired on Day 5.
+// Day 5: Gemini multimodal Vision API fully connected ✓
 
 function initUploadPanel() {
   const dropzone      = document.getElementById('upload-dropzone');
@@ -1241,6 +1241,15 @@ function initUploadPanel() {
   // ── Form input changes — recheck button state ─────────
   subjectIn?.addEventListener('input', updateButtonState);
   topicIn?.addEventListener('input', updateButtonState);
+
+  // ── Generate from images button ───────────────────────
+  generateBtn.addEventListener('click', () => {
+    const subject = subjectIn?.value.trim();
+    const topic   = topicIn?.value.trim();
+    const date    = dateIn?.value || new Date().toISOString().split('T')[0];
+    if (uploadedFiles.length === 0 || !subject || !topic) return;
+    generateCardsFromImages(uploadedFiles, subject, topic, date);
+  });
 
   // ─────────────────────────────────────────────────────
   // Core helpers
@@ -1353,14 +1362,12 @@ function initUploadPanel() {
   }
 
   function updateButtonState() {
-    const hasFiles  = uploadedFiles.length > 0;
+    const hasFiles   = uploadedFiles.length > 0;
     const hasSubject = subjectIn?.value.trim().length > 0;
     const hasTopic   = topicIn?.value.trim().length > 0;
+    const isReady    = hasFiles && hasSubject && hasTopic;
 
-    // Button is disabled until API is wired (Day 5)
-    // We still track readiness to give helpful hint text
-    const isReady = hasFiles && hasSubject && hasTopic;
-    generateBtn.disabled = true; // Always disabled until Day 5
+    generateBtn.disabled = !isReady;
 
     if (!hasFiles) {
       hintText.textContent = 'Upload images above to enable generation.';
@@ -1369,8 +1376,157 @@ function initUploadPanel() {
       hintText.textContent = 'Fill in Subject and Topic to continue.';
       hintText.style.color = 'var(--yellow)';
     } else {
-      hintText.textContent = '✓ Ready! Gemini Vision API will be connected on Day 5.';
+      hintText.textContent = '✓ Ready — click Generate to extract flashcards with Gemini Vision.';
       hintText.style.color = 'var(--green-light)';
     }
   }
 }
+
+// ── Gemini Vision API — Image → Flashcards ─────────────────
+async function generateCardsFromImages(files, subject, topic, date) {
+  const generateBtn = document.getElementById('upload-generate-btn');
+  const hintText    = document.getElementById('upload-hint-text');
+  const dropzone    = document.getElementById('upload-dropzone');
+  const originalLabel = generateBtn.innerHTML;
+
+  // Set loading state
+  generateBtn.disabled = true;
+  generateBtn.innerHTML = `<span>⏳ Analysing images…</span>`;
+  hintText.textContent = `Gemini Vision is reading your ${files.length > 1 ? files.length + ' images' : 'image'}…`;
+  hintText.style.color = 'var(--yellow)';
+  dropzone.classList.add('generating');
+
+  const apiKey = window.EduStore.getApiKey();
+  let generatedCards = [];
+
+  if (apiKey) {
+    try {
+      // Convert each File to a base64 inlineData object
+      const imageDataArray = await Promise.all(files.map(fileToBase64Part));
+      generatedCards = await callGeminiVisionAPI(apiKey, subject, topic, imageDataArray);
+    } catch (err) {
+      console.error('Gemini Vision failed:', err);
+      alert('Gemini Vision API request failed. Falling back to Mock generator.\nError: ' + err.message);
+      generatedCards = getPremiumMockCards(subject, topic);
+    }
+  } else {
+    // No API key — simulate delay then use mock
+    await new Promise(resolve => setTimeout(resolve, 1800));
+    generatedCards = getPremiumMockCards(subject, topic);
+  }
+
+  // Build the temporary session object
+  tempSession = {
+    id:       'sess-' + Date.now(),
+    subject:  subject,
+    topic:    topic,
+    date:     date,
+    status:   'draft',
+    cards:    generatedCards,
+    responses: []
+  };
+
+  // Reset loading state
+  generateBtn.disabled = false;
+  generateBtn.innerHTML = originalLabel;
+  hintText.textContent = `✓ ${generatedCards.length} cards generated from your image${files.length > 1 ? 's' : ''}!`;
+  hintText.style.color = 'var(--green-light)';
+  dropzone.classList.remove('generating');
+
+  // Render and navigate to preview
+  renderPreviewPanel();
+  switchPanel('preview');
+}
+
+// Convert a File object to a Gemini inlineData part
+function fileToBase64Part(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataURL = e.target.result;
+      // dataURL = "data:image/jpeg;base64,<base64data>"
+      const base64 = dataURL.split(',')[1];
+      resolve({
+        inlineData: {
+          mimeType: file.type,
+          data: base64
+        }
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Gemini multimodal Vision API call
+async function callGeminiVisionAPI(apiKey, subject, topic, imageDataArray) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+  const systemPrompt = `You are an expert educator. Carefully read the content in the provided image(s) — which may be handwritten or printed notes, a whiteboard, slides, or a diagram — for the subject "${subject}" and topic "${topic}".
+Based solely on what you can read in the images, generate a JSON object containing 5 to 7 high-quality revision flashcards for students.
+
+Each flashcard must contain:
+1. "question": A clear multiple-choice question derived from the visible content.
+2. "options": Exactly 4 plausible options.
+3. "correctIndex": The 0-based index of the correct answer (0, 1, 2, or 3).
+4. "answer": A brief 1-2 sentence explanation of the correct answer.
+5. "topic": A specific sub-topic derived from the image content.
+
+If the image content is unclear, generate flashcards from your knowledge of "${topic}" in "${subject}".
+
+Respond ONLY with a valid JSON matching this schema:
+{
+  "cards": [
+    {
+      "question": "...",
+      "options": ["...", "...", "...", "..."],
+      "correctIndex": 0,
+      "answer": "...",
+      "topic": "..."
+    }
+  ]
+}`;
+
+  // Build parts: first the text prompt, then all images
+  const parts = [
+    { text: systemPrompt },
+    ...imageDataArray
+  ];
+
+  const body = {
+    contents: [{ parts }],
+    generationConfig: {
+      responseMimeType: 'application/json'
+    }
+  };
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errorDetails = await response.text();
+    throw new Error(`HTTP ${response.status} — ${errorDetails}`);
+  }
+
+  const json    = await response.json();
+  const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) throw new Error('Empty response from Gemini Vision.');
+
+  const parsed = JSON.parse(rawText.trim());
+  if (!parsed.cards || !Array.isArray(parsed.cards)) {
+    throw new Error('Invalid output structure from Gemini Vision.');
+  }
+
+  return parsed.cards.map((c, i) => ({
+    id:           `card-img-${Date.now()}-${i}`,
+    question:     c.question,
+    options:      c.options,
+    correctIndex: parseInt(c.correctIndex) || 0,
+    answer:       c.answer,
+    topic:        c.topic || topic
+  }));
+}
+

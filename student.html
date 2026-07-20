@@ -9,6 +9,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
   <link rel="stylesheet" href="css/global.css" />
   <link rel="stylesheet" href="css/student.css" />
+  <!-- Google Identity Services (OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -22,6 +24,7 @@
       <div class="navbar-right">
         <span class="nav-badge" style="background:rgba(251,188,4,0.1);color:var(--yellow);border-color:rgba(251,188,4,0.25);">Student</span>
         <a href="teacher.html" class="btn btn-ghost btn-sm" id="nav-teacher-link">Switch to Teacher</a>
+        <button class="btn btn-outline btn-sm" id="nav-signin-btn">👤 Sign In</button>
         <a href="index.html"   class="btn btn-outline btn-sm" id="nav-home-link">Home</a>
       </div>
     </div>
@@ -149,6 +152,7 @@
   </div>
 
   <script src="js/store.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/student.js"></script>
 
 </body>

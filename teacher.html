@@ -9,6 +9,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
   <link rel="stylesheet" href="css/global.css" />
   <link rel="stylesheet" href="css/teacher.css" />
+  <!-- Google Identity Services (OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -22,6 +24,7 @@
       <div class="navbar-right">
         <span class="nav-badge">Teacher</span>
         <a href="student.html" class="btn btn-ghost btn-sm" id="nav-student-link">Switch to Student</a>
+        <button class="btn btn-outline btn-sm" id="nav-signin-btn">👤 Sign In</button>
         <a href="index.html"   class="btn btn-outline btn-sm" id="nav-home-link">Home</a>
       </div>
     </div>
@@ -135,7 +138,7 @@
         <!-- Sidebar footer — user info -->
         <div class="sidebar-footer" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
           <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
-            <div class="sidebar-avatar">T</div>
+            <div class="sidebar-avatar" id="sidebar-avatar" title="Click to sign in">T</div>
             <div class="sidebar-user-info">
               <div class="sidebar-user-name">Teacher Admin</div>
               <div class="sidebar-user-role">Class Administrator</div>
@@ -247,14 +250,7 @@
             </p>
           </div>
 
-          <!-- Coming tomorrow hint banner -->
-          <div class="upload-coming-banner" id="upload-coming-banner">
-            <span class="upload-coming-icon">🔧</span>
-            <div>
-              <div class="upload-coming-title">Gemini Vision API coming tomorrow (Day 5)</div>
-              <div class="upload-coming-desc">The UI is fully ready — upload images and check the preview. AI card generation will be wired up next session.</div>
-            </div>
-          </div>
+          <!-- Day 5: Banner removed — Gemini Vision API is now live -->
 
           <div class="upload-form" id="upload-form">
 
@@ -624,6 +620,7 @@
   </div>
 
   <script src="js/store.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>
