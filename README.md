@@ -48,6 +48,8 @@ Teacher dashboard → weak topics vs strong topics
 - [x] Upload Notes panel — drag-and-drop dropzone, thumbnail strip with remove, file validation (JPG/PNG/WEBP, 4 images, 5 MB)
 - [x] Gemini Vision multimodal API — image(s) → flashcards with base64 inlineData (Day 5)
 - [x] Google OAuth sign-in — Google Identity Services modal with mock user picker and persistent session (Day 5)
+- [x] Firebase Firestore integration — opt-in cloud persistence replacing localStorage, real-time `onSnapshot` listener (Day 6)
+- [x] Chart.js analytics charts — line (accuracy trend), doughnut (self-ratings), horizontal bar (per-topic accuracy) (Day 6)
 - [ ] Google Classroom API (planned)
 
 ---
@@ -58,10 +60,11 @@ Teacher dashboard → weak topics vs strong topics
 |---|---|
 | Frontend | HTML, CSS, Vanilla JavaScript |
 | AI | Google Gemini API (`gemini-1.5-flash`) |
-| Auth | Google OAuth 2.0 *(planned)* |
+| Auth | Google OAuth 2.0 (mock flow + GSI hook) |
+| Database | Firebase Firestore *(opt-in, Day 6)* |
 | Classroom | Google Classroom Add-ons API *(planned)* |
-| Storage | `localStorage` → Firebase *(planned)* |
-| Charts | Chart.js *(planned)* |
+| Charts | Chart.js 4 *(Day 6)* |
+| Storage | `localStorage` → Firebase Firestore |
 
 ---
 
@@ -70,13 +73,20 @@ Teacher dashboard → weak topics vs strong topics
 ```
 flashAI/
 ├── index.html        # Landing page
-├── teacher.html      # Teacher dashboard (WIP)
-├── student.html      # Student view (WIP)
+├── teacher.html      # Teacher dashboard
+├── student.html      # Student view
 ├── css/
 │   ├── global.css    # Design tokens, buttons, base styles
-│   └── landing.css   # Landing page layout and components
+│   ├── landing.css   # Landing page layout and components
+│   ├── student.css   # Student reviewer styles
+│   └── teacher.css   # Teacher dashboard styles + Day 6 charts
 └── js/
-    └── landing.js    # Flashcard demo logic
+    ├── firebase-store.js  # Firebase Firestore adapter (Day 6)
+    ├── store.js           # Unified data store (local + Firebase routing)
+    ├── auth.js            # Google OAuth / mock sign-in
+    ├── teacher.js         # Teacher dashboard + Chart.js (Day 6)
+    ├── student.js         # Student flashcard reviewer
+    └── landing.js         # Landing page flashcard demo
 ```
 
 ---
@@ -128,6 +138,12 @@ cd flashAI
 - [x] **Day 5: Gemini Vision API & Google OAuth (Current)**
   - Wired multimodal image→flashcard generation using `inlineData` base64 parts sent to `gemini-1.5-flash`.
   - Google Identity Services (GSI) sign-in modal with 3-user mock picker, persistent `localStorage` session, avatar/name sidebar injection, and sign-out flow.
+- [x] **Day 6: Firebase Firestore + Chart.js Analytics (Current)**
+  - `firebase-store.js` adapter wrapping the Firestore SDK; mirrors EduStore API.
+  - Opt-in Firebase config modal (paste JSON from Firebase Console); graceful localStorage fallback.
+  - Real-time `onSnapshot` listener — teacher dashboard auto-refreshes when any student submits.
+  - Firebase connection status dot in sidebar (pulsing green = cloud, grey = local).
+  - 3 Chart.js 4 charts in the Analytics Overview panel: line (MCQ accuracy by session), doughnut (self-rating distribution), horizontal bar (per-topic accuracy).
 
 ---
 

@@ -1,6 +1,10 @@
 // ============================================================
 //  EduFlash AI — Shared Data Store Manager
-//  Manages localStorage state, mock data, and configurations
+//  Day 1-5: localStorage CRUD for sessions and API keys
+//  Day 6: Firebase Firestore routing layer added.
+//         When FirebaseStore.isReady() === true, all session
+//         reads/writes are transparently delegated to Firestore.
+//         Falls back to localStorage when Firebase is not configured.
 // ============================================================
 
 const STORE_KEYS = {
@@ -53,7 +57,7 @@ const defaultSessions = [
     id: 'session-2',
     subject: 'Physics',
     topic: 'Work, Energy and Power',
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Yesterday
+    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
     status: 'closed',
     cards: [
       {
@@ -152,15 +156,13 @@ const defaultSessions = [
   }
 ];
 
-const EduStore = {
-  // Initialize sessions if empty
+// ── localStorage adapter (original Day 1-5 implementation) ───
+const LocalStore = {
   init() {
     if (!localStorage.getItem(STORE_KEYS.SESSIONS)) {
       localStorage.setItem(STORE_KEYS.SESSIONS, JSON.stringify(defaultSessions));
     }
   },
-
-  // Sessions CRUD
   getSessions() {
     this.init();
     try {
@@ -170,67 +172,168 @@ const EduStore = {
       return [];
     }
   },
-
   saveSessions(sessions) {
     localStorage.setItem(STORE_KEYS.SESSIONS, JSON.stringify(sessions));
   },
-
   getSessionById(id) {
-    const sessions = this.getSessions();
-    return sessions.find(s => s.id === id);
+    return this.getSessions().find(s => s.id === id) || null;
   },
-
   addSession(session) {
     const sessions = this.getSessions();
-    sessions.unshift(session); // Add to the top of list
+    sessions.unshift(session);
     this.saveSessions(sessions);
   },
-
-  updateSession(updatedSession) {
+  updateSession(updated) {
     const sessions = this.getSessions();
-    const idx = sessions.findIndex(s => s.id === updatedSession.id);
-    if (idx !== -1) {
-      sessions[idx] = updatedSession;
-      this.saveSessions(sessions);
-      return true;
-    }
+    const idx = sessions.findIndex(s => s.id === updated.id);
+    if (idx !== -1) { sessions[idx] = updated; this.saveSessions(sessions); return true; }
     return false;
   },
-
   deleteSession(id) {
-    let sessions = this.getSessions();
-    sessions = sessions.filter(s => s.id !== id);
-    this.saveSessions(sessions);
+    this.saveSessions(this.getSessions().filter(s => s.id !== id));
   },
-
-  // Add response from a student
   addStudentResponse(sessionId, response) {
     const sessions = this.getSessions();
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
       if (!session.responses) session.responses = [];
-      // Prevent duplicate student reviews for testing if desired, or allow appending
       session.responses.push(response);
       this.saveSessions(sessions);
       return true;
     }
     return false;
-  },
-
-  // Gemini API Key Management
-  getApiKey() {
-    return localStorage.getItem(STORE_KEYS.API_KEY) || '';
-  },
-
-  setApiKey(key) {
-    if (key) {
-      localStorage.setItem(STORE_KEYS.API_KEY, key.trim());
-    } else {
-      localStorage.removeItem(STORE_KEYS.API_KEY);
-    }
   }
 };
 
-// Export to window so it's accessible by all scripts
+// ── Unified EduStore — routes to Firebase or localStorage ────
+const EduStore = {
+
+  // ── Day 6: Firebase routing helpers ─────────────────────────
+  isFirebaseEnabled() {
+    return typeof window.FirebaseStore !== 'undefined' && window.FirebaseStore.isReady();
+  },
+
+  /**
+   * Initialise Firebase if a config exists.
+   * Called once on page load in teacher.js / student.js.
+   * Returns Promise<boolean>
+   */
+  async initFirebase() {
+    if (typeof window.FirebaseStore === 'undefined') return false;
+    const ok = await window.FirebaseStore.init();
+    if (ok) {
+      // Seed Firestore with default data if it's empty
+      await window.FirebaseStore.seedIfEmpty(defaultSessions);
+    }
+    return ok;
+  },
+
+  /**
+   * Subscribe to real-time updates from Firestore.
+   * Falls back to a no-op when in local mode.
+   * @param {Function} callback  Receives (sessions[])
+   * @returns {Function} unsubscribe
+   */
+  onSessionsChange(callback) {
+    if (this.isFirebaseEnabled()) {
+      return window.FirebaseStore.onSessionsChange(callback);
+    }
+    return () => {}; // no-op in local mode
+  },
+
+  // ── Sessions CRUD — synchronous local / async firebase ──────
+
+  /** Sync in local mode; returns Array. Async in Firebase mode (avoid direct call — use getSessionsAsync). */
+  getSessions() {
+    // Synchronous path for backwards-compat with existing code
+    return LocalStore.getSessions();
+  },
+
+  /** Always returns Promise<Array> — use this in new async contexts */
+  async getSessionsAsync() {
+    if (this.isFirebaseEnabled()) {
+      return window.FirebaseStore.getSessions();
+    }
+    return LocalStore.getSessions();
+  },
+
+  getSessionById(id) {
+    return LocalStore.getSessionById(id);
+  },
+
+  async getSessionByIdAsync(id) {
+    if (this.isFirebaseEnabled()) {
+      return window.FirebaseStore.getSessionById(id);
+    }
+    return LocalStore.getSessionById(id);
+  },
+
+  /** Saves to both localStorage (sync) and Firestore (async) */
+  addSession(session) {
+    LocalStore.addSession(session); // keep local copy immediately
+    if (this.isFirebaseEnabled()) {
+      window.FirebaseStore.addSession(session).catch(e =>
+        console.error('[EduStore] Firebase addSession failed:', e)
+      );
+    }
+  },
+
+  updateSession(updated) {
+    LocalStore.updateSession(updated);
+    if (this.isFirebaseEnabled()) {
+      window.FirebaseStore.updateSession(updated).catch(e =>
+        console.error('[EduStore] Firebase updateSession failed:', e)
+      );
+    }
+    return true;
+  },
+
+  deleteSession(id) {
+    LocalStore.deleteSession(id);
+    if (this.isFirebaseEnabled()) {
+      window.FirebaseStore.deleteSession(id).catch(e =>
+        console.error('[EduStore] Firebase deleteSession failed:', e)
+      );
+    }
+  },
+
+  /** Returns a Promise<boolean> so callers can await Firestore write */
+  async addStudentResponse(sessionId, response) {
+    LocalStore.addStudentResponse(sessionId, response); // write locally instantly
+    if (this.isFirebaseEnabled()) {
+      try {
+        await window.FirebaseStore.addStudentResponse(sessionId, response);
+      } catch (e) {
+        console.error('[EduStore] Firebase addStudentResponse failed:', e);
+      }
+    }
+    return true;
+  },
+
+  // ── Gemini API Key Management (unchanged) ───────────────────
+  getApiKey() {
+    return localStorage.getItem(STORE_KEYS.API_KEY) || '';
+  },
+  setApiKey(key) {
+    if (key) localStorage.setItem(STORE_KEYS.API_KEY, key.trim());
+    else localStorage.removeItem(STORE_KEYS.API_KEY);
+  },
+
+  // ── Firebase Config helpers (delegates to FirebaseStore) ────
+  getFirebaseConfig() {
+    return typeof window.FirebaseStore !== 'undefined'
+      ? window.FirebaseStore.getStoredConfig()
+      : null;
+  },
+  saveFirebaseConfig(cfg) {
+    if (typeof window.FirebaseStore !== 'undefined') window.FirebaseStore.saveConfig(cfg);
+  },
+  clearFirebaseConfig() {
+    if (typeof window.FirebaseStore !== 'undefined') window.FirebaseStore.clearConfig();
+  }
+};
+
+// Export to window
 window.EduStore = EduStore;
-EduStore.init();
+// Init local store immediately (original behaviour)
+LocalStore.init();

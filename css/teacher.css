@@ -1706,3 +1706,119 @@
   50%       { box-shadow: 0 0 0 8px rgba(30,142,62,0.15); }
 }
 
+/* ────────────────────────────────────────────
+   DAY 6 — FIREBASE STATUS INDICATOR
+──────────────────────────────────────────── */
+.firebase-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+.sidebar.collapsed .firebase-status { opacity: 0; pointer-events: none; }
+
+.firebase-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+.firebase-dot.connected {
+  background: var(--green-light);
+  box-shadow: 0 0 5px rgba(52,168,83,0.6);
+  animation: firebase-pulse 2.4s ease-in-out infinite;
+}
+@keyframes firebase-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(52,168,83,0.5); }
+  50%       { box-shadow: 0 0 10px rgba(52,168,83,0.9); }
+}
+.firebase-label {
+  font-size: 0.67rem;
+  color: var(--text-dim);
+  font-family: 'Google Sans', sans-serif;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transition: color 0.4s ease;
+}
+.firebase-label.connected { color: var(--green-light); }
+
+/* Firebase status row inside modal */
+.firebase-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.firebase-status-row.active {
+  background: rgba(30,142,62,0.06);
+  border-color: rgba(30,142,62,0.3);
+  color: var(--green-light);
+}
+
+/* ────────────────────────────────────────────
+   DAY 6 — CHART.JS CHART CARDS
+──────────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 20px 0;
+}
+.chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.chart-card:hover {
+  border-color: rgba(30,142,62,0.35);
+  box-shadow: 0 2px 16px rgba(30,142,62,0.06);
+}
+.chart-card-full {
+  grid-column: 1 / -1;   /* spans both columns */
+}
+.chart-card-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  letter-spacing: 0.01em;
+}
+.chart-canvas-wrap {
+  position: relative;
+  height: 200px;
+}
+.chart-canvas-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.chart-canvas-sm {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chart-canvas-sm canvas {
+  max-width: 200px !important;
+  max-height: 200px !important;
+}
+.chart-canvas-bar {
+  height: 240px;
+}
+
+/* Responsive chart grid */
+@media (max-width: 900px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .chart-card-full { grid-column: auto; }
+}

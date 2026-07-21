@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="css/teacher.css" />
   <!-- Google Identity Services (OAuth) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Chart.js for analytics visualisations (Day 6) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -51,6 +53,11 @@
           <div class="sidebar-class-info">
             <div class="sidebar-class-name">Physics — Batch A</div>
             <div class="sidebar-class-code">Class code: ef-2024</div>
+          </div>
+          <!-- Firebase connection status dot -->
+          <div class="firebase-status" id="firebase-status" title="Data storage mode">
+            <span class="firebase-dot" id="firebase-dot"></span>
+            <span class="firebase-label" id="firebase-label">Local</span>
           </div>
         </div>
 
@@ -553,7 +560,29 @@
             </div>
           </div>
 
-          <h3 style="font-family: 'Google Sans', sans-serif; font-size: 1rem; margin-bottom: 12px;">Active Sessions Performance</h3>
+          <!-- Day 6: Chart.js Visualisations -->
+          <div class="charts-grid" id="charts-grid">
+            <div class="chart-card">
+              <div class="chart-card-title">📈 MCQ Accuracy by Session</div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chart-accuracy-line"></canvas>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-title">🎯 Self-Rating Distribution</div>
+              <div class="chart-canvas-wrap chart-canvas-sm">
+                <canvas id="chart-ratings-doughnut"></canvas>
+              </div>
+            </div>
+            <div class="chart-card chart-card-full">
+              <div class="chart-card-title">🏷️ Per-Topic Accuracy</div>
+              <div class="chart-canvas-wrap chart-canvas-bar">
+                <canvas id="chart-topics-bar"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="font-family: 'Google Sans', sans-serif; font-size: 1rem; margin-bottom: 12px; margin-top: 8px;">Session Performance Details</h3>
           <div class="session-list" id="analytics-sessions-list">
             <!-- Dynamic session stats rows -->
           </div>
@@ -612,13 +641,64 @@
           </p>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline btn-sm" id="modal-cancel-btn">Cancel</button>
-        <button class="btn btn-green btn-sm" id="modal-save-btn">Save Key</button>
+      <div class="modal-footer" style="flex-direction: column; gap: 10px; align-items: stretch;">
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-outline btn-sm" id="modal-cancel-btn" style="flex:1;">Cancel</button>
+          <button class="btn btn-green btn-sm" id="modal-save-btn" style="flex:1;">Save Key</button>
+        </div>
+        <button class="btn btn-outline btn-sm" id="modal-firebase-btn" style="width:100%; justify-content:center; border-color: rgba(255,167,38,0.35); color: #ffb347;">
+          🔥 Firebase Setup
+        </button>
       </div>
     </div>
   </div>
 
+  <!-- Day 6: Firebase config modal -->
+  <div class="modal-overlay" id="firebase-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">🔥 Firebase Setup</h3>
+        <button class="modal-close" id="firebase-modal-close">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px; line-height: 1.6;">
+          Connect EduFlash AI to <strong>Firebase Firestore</strong> for real-time cloud sync.
+          Sessions and student responses will be shared across all devices instantly.
+        </p>
+        <div class="firebase-status-row" id="firebase-current-status">
+          <!-- populated by JS -->
+        </div>
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label" for="firebase-config-input">Firebase Config JSON</label>
+          <textarea
+            id="firebase-config-input"
+            class="form-textarea"
+            style="height: 160px; font-family: monospace; font-size: 0.78rem;"
+            placeholder='Paste your Firebase config object here, e.g.:
+{
+  "apiKey": "AIza...",
+  "authDomain": "myapp.firebaseapp.com",
+  "projectId": "myapp",
+  "storageBucket": "myapp.appspot.com",
+  "messagingSenderId": "123456",
+  "appId": "1:123:web:abc"
+}'
+          ></textarea>
+          <p style="font-size: 0.72rem; color: var(--text-dim); margin-top: 6px;">
+            Get this from <a href="https://console.firebase.google.com/" target="_blank" style="color: var(--green-light); text-decoration: underline;">Firebase Console</a>
+            → Project Settings → Your apps → Config.
+            Leave blank and click Disconnect to revert to local storage.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-sm" id="firebase-disconnect-btn" style="color: #f28b82; border-color: rgba(242,139,130,0.3);">Disconnect</button>
+        <button class="btn btn-green btn-sm" id="firebase-connect-btn">🔥 Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/firebase-store.js"></script>
   <script src="js/store.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/teacher.js"></script>

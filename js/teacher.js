@@ -2,25 +2,48 @@
 //  EduFlash AI — Teacher Dashboard JS
 //  Day 3: Full logic including Gemini, Preview, Sessions, Analytics
 //  Day 4: Upload Notes panel UI (Gemini vision API wired on Day 5)
+//  Day 5: Gemini Vision API + Google OAuth
+//  Day 6: Firebase Firestore cloud sync + Chart.js analytics charts
 // ============================================================
 
-let tempSession = null; // Holds the currently generated but unpublished session
+let tempSession = null;   // Holds the currently generated but unpublished session
 
-document.addEventListener('DOMContentLoaded', () => {
+// ── Day 6: Chart.js instances (kept to allow destroy-before-redraw) ──────────
+let _chartAccuracy  = null;
+let _chartRatings   = null;
+let _chartTopics    = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
   initSidebar();
   initPanelTabs();
   initTranscriptForm();
   initApiKeySettings();
+  initFirebaseModal();        // Day 6
   initSimulator();
   initUploadPanel();
   renderAllSessions();
   renderAnalytics();
-  
+
+  // Day 6: attempt Firebase init in background
+  const firebaseOk = await window.EduStore.initFirebase();
+  updateFirebaseStatusUI(firebaseOk);
+  if (firebaseOk) {
+    // Real-time listener — refresh views whenever Firestore changes
+    window.EduStore.onSessionsChange(sessions => {
+      // Sync sessions to localStorage so synchronous getSessions() stays fresh
+      try {
+        localStorage.setItem('ef_sessions', JSON.stringify(sessions));
+      } catch (e) {}
+      renderAllSessions();
+      renderAnalytics();
+    });
+  }
+
   // Wire up other static buttons
   document.getElementById('publish-view-sessions-btn')?.addEventListener('click', () => {
     switchPanel('all-sessions');
   });
-  
+
   document.getElementById('btn-refresh-suggestions')?.addEventListener('click', generateAISuggestions);
 });
 
@@ -752,11 +775,9 @@ window.viewSessionResults = function(id) {
 
 // ── Teacher Analytics Calculations ─────────────────────────
 function renderAnalytics() {
-  const selectedSessionId = localStorage.getItem('ef_selected_analytics_session') || '';
   const sessions = window.EduStore.getSessions().filter(s => s.status !== 'draft');
-  
+
   if (sessions.length === 0) {
-    // Show zero state
     document.getElementById('stat-avg-accuracy').textContent = '0%';
     document.getElementById('stat-participation').textContent = '0';
     document.getElementById('stat-confidence').textContent = '0';
@@ -770,6 +791,7 @@ function renderAnalytics() {
     document.getElementById('topic-strength-list-container').innerHTML = `
       <p style="color:var(--text-dim); text-align:center; padding: 24px;">No topics data. Generate and review cards first.</p>
     `;
+    destroyCharts();
     return;
   }
 
@@ -782,11 +804,7 @@ function renderAnalytics() {
   sessions.forEach(sess => {
     const responses = sess.responses || [];
     totalStudentResponses += responses.length;
-    
-    sess.cards.forEach(c => {
-      if (c.topic) uniqueTopics.add(c.topic);
-    });
-
+    sess.cards.forEach(c => { if (c.topic) uniqueTopics.add(c.topic); });
     responses.forEach(res => {
       res.cardResponses.forEach(cr => {
         totalMCQAnswers++;
@@ -797,11 +815,13 @@ function renderAnalytics() {
 
   const avgAccuracy = totalMCQAnswers > 0 ? Math.round((correctMCQAnswers / totalMCQAnswers) * 100) : 0;
 
-  // Display stats values
   document.getElementById('stat-avg-accuracy').textContent = `${avgAccuracy}%`;
   document.getElementById('stat-avg-accuracy').nextElementSibling.textContent = totalMCQAnswers > 0 ? '▲ Active participation' : 'No data';
   document.getElementById('stat-participation').textContent = totalStudentResponses;
   document.getElementById('stat-confidence').textContent = uniqueTopics.size;
+
+  // ── Day 6: Draw Chart.js charts ──────────────────────────
+  drawCharts(sessions);
 
   // Render session results list
   const container = document.getElementById('analytics-sessions-list');
@@ -1091,27 +1111,24 @@ function initSimulator() {
   const btn = document.getElementById('simulate-answers-btn');
   if (!btn) return;
 
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const sessions = window.EduStore.getSessions().filter(s => s.status === 'live');
     if (sessions.length === 0) {
       alert('You need at least one LIVE session to simulate student answers on. Please publish a session first.');
       return;
     }
 
-    // Pick the first live session
+    btn.disabled = true;
+    btn.textContent = '⏳ Simulating…';
+
     const session = sessions[0];
     const numSubmissions = 15;
-    
-    const ratings = ['know', 'fuzzy', 'nope'];
 
     for (let i = 0; i < numSubmissions; i++) {
       const studentId = `sim-stud-${Math.floor(Math.random() * 9000) + 1000}`;
       const cardResponses = session.cards.map(card => {
-        // 70% chance of choosing correct option
         const isCorrect = Math.random() < 0.70;
         const selectedIndex = isCorrect ? card.correctIndex : (card.correctIndex + 1) % 4;
-        
-        // Calibrate confidence rating based on correct answer
         let rating = 'fuzzy';
         const rand = Math.random();
         if (isCorrect) {
@@ -1119,26 +1136,17 @@ function initSimulator() {
         } else {
           rating = rand < 0.10 ? 'know' : rand < 0.50 ? 'fuzzy' : 'nope';
         }
-
-        return {
-          cardId: card.id,
-          selectedIndex: selectedIndex,
-          isCorrect: isCorrect,
-          rating: rating
-        };
+        return { cardId: card.id, selectedIndex, isCorrect, rating };
       });
 
-      const response = {
-        studentId: studentId,
-        cardResponses: cardResponses
-      };
-
-      window.EduStore.addStudentResponse(session.id, response);
+      // Day 6: await so Firebase writes complete before re-rendering
+      await window.EduStore.addStudentResponse(session.id, { studentId, cardResponses });
     }
 
-    alert(`Successfully simulated ${numSubmissions} student responses on session: "${session.topic}"`);
-    
-    // Refresh all views
+    btn.disabled = false;
+    btn.textContent = 'Simulate Responses';
+    alert(`Successfully simulated ${numSubmissions} student responses on: "${session.topic}"`);
+
     renderAllSessions();
     renderAnalytics();
   });
@@ -1147,15 +1155,271 @@ function initSimulator() {
 // Helper Utilities
 function escapeHTML(str) {
   if (!str) return '';
-  return str.replace(/[&<>'"]/g, 
-    tag => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      "'": '&#39;',
-      '"': '&quot;'
-    }[tag] || tag)
+  return str.replace(/[&<>'"]/g,
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
   );
+}
+
+// ── Day 6: Firebase status dot helper ──────────────────────
+function updateFirebaseStatusUI(isConnected) {
+  const dot   = document.getElementById('firebase-dot');
+  const label = document.getElementById('firebase-label');
+  if (!dot || !label) return;
+  if (isConnected) {
+    dot.classList.add('connected');
+    label.classList.add('connected');
+    label.textContent = 'Cloud';
+    dot.title = 'Firebase Firestore — connected';
+  } else {
+    dot.classList.remove('connected');
+    label.classList.remove('connected');
+    label.textContent = 'Local';
+    dot.title = 'localStorage — no Firebase config';
+  }
+}
+
+// ── Day 6: Firebase modal ───────────────────────────────────
+function initFirebaseModal() {
+  const modal         = document.getElementById('firebase-modal');
+  const openBtn       = document.getElementById('modal-firebase-btn');
+  const closeBtn      = document.getElementById('firebase-modal-close');
+  const connectBtn    = document.getElementById('firebase-connect-btn');
+  const disconnectBtn = document.getElementById('firebase-disconnect-btn');
+  const configInput   = document.getElementById('firebase-config-input');
+  const statusRow     = document.getElementById('firebase-current-status');
+
+  if (!modal || !openBtn) return;
+
+  function refreshModalStatus() {
+    const cfg = window.EduStore.getFirebaseConfig();
+    const connected = window.FirebaseStore && window.FirebaseStore.isReady();
+    if (statusRow) {
+      if (connected) {
+        statusRow.className = 'firebase-status-row active';
+        statusRow.innerHTML = `🟢 &nbsp; <strong>Connected</strong> — syncing to Firebase Firestore`;
+      } else if (cfg) {
+        statusRow.className = 'firebase-status-row';
+        statusRow.innerHTML = `🟡 &nbsp; Config saved — reload the page to activate Firebase`;
+      } else {
+        statusRow.className = 'firebase-status-row';
+        statusRow.innerHTML = `⚪ &nbsp; <strong>Local mode</strong> — data stored in this browser only`;
+      }
+    }
+    if (configInput && cfg) {
+      configInput.value = JSON.stringify(cfg, null, 2);
+    }
+  }
+
+  openBtn.addEventListener('click', () => {
+    refreshModalStatus();
+    modal.classList.add('active');
+  });
+
+  const closeModal = () => modal.classList.remove('active');
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  connectBtn.addEventListener('click', async () => {
+    const raw = configInput.value.trim();
+    if (!raw) { alert('Please paste your Firebase config JSON.'); return; }
+    let cfg;
+    try {
+      cfg = JSON.parse(raw);
+    } catch (e) {
+      alert('Invalid JSON — please check your config.'); return;
+    }
+    if (!cfg.projectId || !cfg.apiKey) {
+      alert('Config must include at least "projectId" and "apiKey".'); return;
+    }
+    connectBtn.disabled = true;
+    connectBtn.textContent = '⏳ Connecting…';
+    window.EduStore.saveFirebaseConfig(cfg);
+    const ok = await window.EduStore.initFirebase();
+    connectBtn.disabled = false;
+    connectBtn.textContent = '🔥 Connect';
+    if (ok) {
+      updateFirebaseStatusUI(true);
+      refreshModalStatus();
+      // Start real-time listener
+      window.EduStore.onSessionsChange(sessions => {
+        try { localStorage.setItem('ef_sessions', JSON.stringify(sessions)); } catch (e) {}
+        renderAllSessions();
+        renderAnalytics();
+      });
+      alert('✅ Firebase connected! Data is now syncing to the cloud.');
+    } else {
+      alert('❌ Could not connect to Firebase. Check your config and make sure Firestore is enabled in your project.');
+    }
+  });
+
+  disconnectBtn.addEventListener('click', () => {
+    if (confirm('Disconnect from Firebase? The app will revert to local-only storage.')) {
+      window.EduStore.clearFirebaseConfig();
+      updateFirebaseStatusUI(false);
+      refreshModalStatus();
+      closeModal();
+    }
+  });
+}
+
+// ── Day 6: Chart.js draw / destroy helpers ─────────────────
+function destroyCharts() {
+  if (_chartAccuracy) { _chartAccuracy.destroy(); _chartAccuracy = null; }
+  if (_chartRatings)  { _chartRatings.destroy();  _chartRatings  = null; }
+  if (_chartTopics)   { _chartTopics.destroy();   _chartTopics   = null; }
+}
+
+function drawCharts(sessions) {
+  if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+
+  // ── Shared chart defaults ──────────────────────────────
+  Chart.defaults.color = 'rgba(232,234,237,0.65)';
+  Chart.defaults.font.family = "'Roboto', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  const gridColor = 'rgba(255,255,255,0.06)';
+  const green     = '#34a853';
+  const greenFill = 'rgba(52,168,83,0.15)';
+  const yellow    = '#fbbc04';
+  const red       = '#f28b82';
+
+  // ── 1. Line chart — MCQ accuracy per session ──────────
+  const lineCtx = document.getElementById('chart-accuracy-line')?.getContext('2d');
+  if (lineCtx) {
+    const labels   = sessions.map(s => s.topic.length > 20 ? s.topic.slice(0, 18) + '…' : s.topic);
+    const accData  = sessions.map(s => {
+      const res = s.responses || [];
+      let correct = 0, total = 0;
+      res.forEach(r => r.cardResponses.forEach(cr => { total++; if (cr.isCorrect) correct++; }));
+      return total > 0 ? Math.round((correct / total) * 100) : 0;
+    });
+
+    if (_chartAccuracy) _chartAccuracy.destroy();
+    _chartAccuracy = new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Accuracy %',
+          data: accData,
+          borderColor: green,
+          backgroundColor: greenFill,
+          borderWidth: 2.5,
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: green,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: ctx => ` ${ctx.parsed.y}% accuracy`
+        }}},
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { maxRotation: 30 } },
+          y: { grid: { color: gridColor }, min: 0, max: 100,
+               ticks: { callback: v => v + '%' } }
+        }
+      }
+    });
+  }
+
+  // ── 2. Doughnut chart — self-rating distribution ──────
+  const doughCtx = document.getElementById('chart-ratings-doughnut')?.getContext('2d');
+  if (doughCtx) {
+    let know = 0, fuzzy = 0, nope = 0;
+    sessions.forEach(s => {
+      (s.responses || []).forEach(r => {
+        r.cardResponses.forEach(cr => {
+          if (cr.rating === 'know') know++;
+          else if (cr.rating === 'fuzzy') fuzzy++;
+          else if (cr.rating === 'nope') nope++;
+        });
+      });
+    });
+
+    if (_chartRatings) _chartRatings.destroy();
+    _chartRatings = new Chart(doughCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Know it', 'Fuzzy', "Don't know"],
+        datasets: [{
+          data: [know, fuzzy, nope],
+          backgroundColor: [green, yellow, red],
+          borderColor: '#202124',
+          borderWidth: 3,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } },
+          tooltip: { callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed}`
+          }}
+        }
+      }
+    });
+  }
+
+  // ── 3. Horizontal bar chart — per-topic accuracy ──────
+  const barCtx = document.getElementById('chart-topics-bar')?.getContext('2d');
+  if (barCtx) {
+    // Aggregate topic accuracy
+    const topicData = {};
+    sessions.forEach(sess => {
+      const responses = sess.responses || [];
+      sess.cards.forEach(card => {
+        const t = card.topic || sess.topic;
+        if (!topicData[t]) topicData[t] = { correct: 0, total: 0 };
+        responses.forEach(res => {
+          const cr = res.cardResponses.find(r => r.cardId === card.id);
+          if (cr) { topicData[t].total++; if (cr.isCorrect) topicData[t].correct++; }
+        });
+      });
+    });
+
+    const topicLabels = Object.keys(topicData);
+    const topicAccs   = topicLabels.map(t => {
+      const d = topicData[t];
+      return d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0;
+    });
+    const barColors = topicAccs.map(v => v < 40 ? red : v < 75 ? yellow : green);
+
+    if (_chartTopics) _chartTopics.destroy();
+    _chartTopics = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: topicLabels,
+        datasets: [{
+          label: 'Accuracy %',
+          data: topicAccs,
+          backgroundColor: barColors,
+          borderRadius: 4,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: ctx => ` ${ctx.parsed.x}% accuracy`
+        }}},
+        scales: {
+          x: { grid: { color: gridColor }, min: 0, max: 100,
+               ticks: { callback: v => v + '%' } },
+          y: { grid: { color: 'transparent' } }
+        }
+      }
+    });
+  }
 }
 
 // ── Upload Notes Panel ─────────────────────────────────────

@@ -7,7 +7,11 @@ let currentSession = null;
 let currentCardIndex = 0;
 let sessionAnswers = []; // Tracks responses for this review session: [{ cardId, selectedIndex, isCorrect, rating }]
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Day 6: init Firebase in background (no-op if no config)
+  if (typeof window.EduStore !== 'undefined' && window.EduStore.initFirebase) {
+    await window.EduStore.initFirebase();
+  }
   initStudentEntry();
   initReviewControls();
 });
@@ -275,7 +279,7 @@ function initReviewControls() {
 }
 
 // ── Complete Review & Submit Responses ──────────────────────
-function finishReview() {
+async function finishReview() {
   if (!currentSession) return;
 
   // Calculate final score
@@ -293,21 +297,32 @@ function finishReview() {
     cardResponses: sessionAnswers
   };
 
-  // Submit to Store
-  window.EduStore.addStudentResponse(currentSession.id, responsePayload);
-
-  // Switch panels
+  // Switch panels immediately — don't wait for Firestore write
   document.getElementById('review-container').classList.remove('visible');
   document.getElementById('completion-container').classList.add('visible');
 
   // Render results
   const accEl = document.getElementById('completion-accuracy');
   accEl.textContent = `${accuracy}%`;
-  
-  // Dynamic color for accuracy
-  if (accuracy < 40) accEl.style.color = '#f28b82';
+  if (accuracy < 40)      accEl.style.color = '#f28b82';
   else if (accuracy < 75) accEl.style.color = 'var(--yellow)';
-  else accEl.style.color = 'var(--green-light)';
+  else                    accEl.style.color = 'var(--green-light)';
+
+  // Day 6: show sync status, then submit (async)
+  const syncEl = document.getElementById('sync-status');
+  if (syncEl) {
+    const isCloud = typeof window.EduStore !== 'undefined' && window.EduStore.isFirebaseEnabled();
+    syncEl.style.display = 'block';
+    syncEl.textContent = isCloud ? '☁️ Syncing to cloud…' : '💾 Saved locally';
+  }
+
+  await window.EduStore.addStudentResponse(currentSession.id, responsePayload);
+
+  if (syncEl) {
+    syncEl.textContent = window.EduStore.isFirebaseEnabled()
+      ? '✅ Synced to cloud — teacher dashboard updated!'
+      : '✅ Saved locally';
+  }
 }
 
 // Helper Utilities
