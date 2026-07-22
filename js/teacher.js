@@ -7,6 +7,7 @@
 // ============================================================
 
 let tempSession = null;   // Holds the currently generated but unpublished session
+let selectedResultsSessionId = null; // Day 7: currently viewed results session
 
 // ── Day 6: Chart.js instances (kept to allow destroy-before-redraw) ──────────
 let _chartAccuracy  = null;
@@ -45,6 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('btn-refresh-suggestions')?.addEventListener('click', generateAISuggestions);
+
+  // Day 7: wire Save Draft button
+  document.getElementById('save-draft-btn')?.addEventListener('click', saveAsDraft);
 });
 
 // ── Sidebar collapse toggle & Accordion ─────────────────────
@@ -235,6 +239,9 @@ function initTranscriptForm() {
     if (generateBtn) {
       generateBtn.disabled = !(hasSubject && hasTopic && hasTranscript);
     }
+    // Save Draft only needs subject + topic
+    const saveDraftBtn = document.getElementById('save-draft-btn');
+    if (saveDraftBtn) saveDraftBtn.disabled = !(hasSubject && hasTopic);
   }
 
   textarea.addEventListener('input', updateCharCount);
@@ -610,6 +617,7 @@ function publishSession() {
   document.getElementById('topic-input').value = '';
   document.getElementById('char-count').textContent = '0 / 15,000';
   document.getElementById('generate-btn').disabled = true;
+  document.getElementById('save-draft-btn').disabled = true;
 
   // Clear preview containers
   document.getElementById('preview-placeholder').style.display = 'flex';
@@ -617,6 +625,7 @@ function publishSession() {
   
   // Switch to publish confirmation state
   switchPanel('publish');
+  showToast('Session published! Students can now review it. ✓', 'success');
 }
 
 // ── Sessions Panel Listings ──────────────────────────────
@@ -754,7 +763,7 @@ window.publishDraft = function(id) {
     session.status = 'live';
     window.EduStore.updateSession(session);
     renderAllSessions();
-    alert('Session published! Students can now review it.');
+    showToast('Session published! Students can now review it. ✓', 'success');
   }
 };
 
@@ -768,9 +777,9 @@ window.editDraft = function(id) {
 };
 
 window.viewSessionResults = function(id) {
-  // Jump to Overview analytics and pre-load stats for this session
-  localStorage.setItem('ef_selected_analytics_session', id);
-  switchPanel('overview');
+  selectedResultsSessionId = id;
+  renderResultsPanel(id);
+  switchPanel('results');
 };
 
 // ── Teacher Analytics Calculations ─────────────────────────
@@ -1114,7 +1123,7 @@ function initSimulator() {
   btn.addEventListener('click', async () => {
     const sessions = window.EduStore.getSessions().filter(s => s.status === 'live');
     if (sessions.length === 0) {
-      alert('You need at least one LIVE session to simulate student answers on. Please publish a session first.');
+      showToast('You need at least one LIVE session to simulate responses. Publish a session first.', 'error');
       return;
     }
 
@@ -1145,7 +1154,7 @@ function initSimulator() {
 
     btn.disabled = false;
     btn.textContent = 'Simulate Responses';
-    alert(`Successfully simulated ${numSubmissions} student responses on: "${session.topic}"`);
+    showToast(`Simulated ${numSubmissions} student responses on “${session.topic}” ✓`, 'success');
 
     renderAllSessions();
     renderAnalytics();
@@ -1221,15 +1230,15 @@ function initFirebaseModal() {
 
   connectBtn.addEventListener('click', async () => {
     const raw = configInput.value.trim();
-    if (!raw) { alert('Please paste your Firebase config JSON.'); return; }
+    if (!raw) { showToast('Please paste your Firebase config JSON.', 'error'); return; }
     let cfg;
     try {
       cfg = JSON.parse(raw);
     } catch (e) {
-      alert('Invalid JSON — please check your config.'); return;
+      showToast('Invalid JSON — please check your config.', 'error'); return;
     }
     if (!cfg.projectId || !cfg.apiKey) {
-      alert('Config must include at least "projectId" and "apiKey".'); return;
+      showToast('Config must include at least "projectId" and "apiKey".', 'error'); return;
     }
     connectBtn.disabled = true;
     connectBtn.textContent = '⏳ Connecting…';
@@ -1246,9 +1255,9 @@ function initFirebaseModal() {
         renderAllSessions();
         renderAnalytics();
       });
-      alert('✅ Firebase connected! Data is now syncing to the cloud.');
+      showToast('✅ Firebase connected! Data is now syncing to the cloud.', 'success');
     } else {
-      alert('❌ Could not connect to Firebase. Check your config and make sure Firestore is enabled in your project.');
+      showToast('❌ Could not connect to Firebase. Check your config and make sure Firestore is enabled.', 'error', 5000);
     }
   });
 
@@ -1668,12 +1677,7 @@ async function generateCardsFromImages(files, subject, topic, date) {
       // Convert each File to a base64 inlineData object
       const imageDataArray = await Promise.all(files.map(fileToBase64Part));
       generatedCards = await callGeminiVisionAPI(apiKey, subject, topic, imageDataArray);
-    } catch (err) {
-      console.error('Gemini Vision failed:', err);
-      alert('Gemini Vision API request failed. Falling back to Mock generator.\nError: ' + err.message);
-      generatedCards = getPremiumMockCards(subject, topic);
-    }
-  } else {
+    } else {
     // No API key — simulate delay then use mock
     await new Promise(resolve => setTimeout(resolve, 1800));
     generatedCards = getPremiumMockCards(subject, topic);
@@ -1794,3 +1798,246 @@ Respond ONLY with a valid JSON matching this schema:
   }));
 }
 
+
+// ══════════════════════════════════════════════
+//  DAY 7 — NEW FUNCTIONS
+// ══════════════════════════════════════════════
+
+// ── Toast notification system ───────────────────────────
+function showToast(message, type = 'info', durationMs = 3200) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  const icons = { success: '✅', error: '⚠️', info: 'ℹ️' };
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+    <span class="toast-msg">${escapeHTML(message)}</span>
+  `;
+
+  container.appendChild(toast);
+
+  // Force reflow then trigger show animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add('show'));
+  });
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 350);
+  }, durationMs);
+}
+
+// ── Save as Draft ────────────────────────────────────
+function saveAsDraft() {
+  const subjectIn = document.getElementById('subject-input');
+  const topicIn   = document.getElementById('topic-input');
+  const dateIn    = document.getElementById('date-input');
+
+  const subject = subjectIn?.value.trim();
+  const topic   = topicIn?.value.trim();
+  const date    = dateIn?.value || new Date().toISOString().split('T')[0];
+
+  if (!subject || !topic) {
+    showToast('Please fill in Subject and Topic to save a draft.', 'error');
+    return;
+  }
+
+  const draft = {
+    id: 'draft-' + Date.now(),
+    subject,
+    topic,
+    date,
+    status: 'draft',
+    cards: [],
+    responses: []
+  };
+
+  window.EduStore.addSession(draft);
+  showToast(`Draft “${topic}” saved! 💾`, 'success');
+  switchPanel('drafts');
+}
+
+// ── Session Results Panel ────────────────────────────
+function renderResultsPanel(id) {
+  const placeholder  = document.getElementById('results-placeholder');
+  const activeDiv    = document.getElementById('results-active');
+  if (!placeholder || !activeDiv) return;
+
+  const session = window.EduStore.getSessionById(id);
+  if (!session) {
+    placeholder.style.display = 'flex';
+    activeDiv.style.display   = 'none';
+    return;
+  }
+
+  placeholder.style.display = 'none';
+  activeDiv.style.display   = 'block';
+
+  const responses = session.responses || [];
+  const totalCards = session.cards.length;
+
+  // Compute avg accuracy
+  let totalAnswers = 0, totalCorrect = 0;
+  responses.forEach(res => {
+    res.cardResponses.forEach(cr => {
+      totalAnswers++;
+      if (cr.isCorrect) totalCorrect++;
+    });
+  });
+  const avgAcc = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : 0;
+  const accColor = avgAcc < 40 ? '#f28b82' : avgAcc < 75 ? 'var(--yellow)' : 'var(--green-light)';
+
+  // ── Render student rows
+  const studentRowsHTML = responses.length === 0
+    ? `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-dim);">No student submissions yet.</td></tr>`
+    : responses.map(res => {
+        const crs = res.cardResponses || [];
+        const correct = crs.filter(cr => cr.isCorrect).length;
+        const answered = crs.length;
+        const acc = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+        const know  = crs.filter(cr => cr.rating === 'know').length;
+        const fuzzy = crs.filter(cr => cr.rating === 'fuzzy').length;
+        const nope  = crs.filter(cr => cr.rating === 'nope').length;
+        const grade = acc >= 80 ? 'A' : acc >= 65 ? 'B' : acc >= 50 ? 'C' : 'D';
+        const gradeClass = { A:'grade-a', B:'grade-b', C:'grade-c', D:'grade-d' }[grade];
+        return `
+          <tr>
+            <td class="result-student-name">${escapeHTML(res.studentId)}</td>
+            <td>${answered}</td>
+            <td>${correct}</td>
+            <td style="color:${acc<40?'#f28b82':acc<75?'var(--yellow)':'var(--green-light)'}; font-weight:600;">${acc}%</td>
+            <td style="color:var(--green-light);">${know}</td>
+            <td style="color:var(--yellow);">${fuzzy}</td>
+            <td style="color:#f28b82;">${nope}</td>
+            <td><span class="grade-badge ${gradeClass}">${grade}</span></td>
+          </tr>`;
+      }).join('');
+
+  // ── Render per-card accordion
+  const cardAccordionHTML = session.cards.map((card, idx) => {
+    let cardCorrect = 0;
+    responses.forEach(res => {
+      const cr = res.cardResponses.find(r => r.cardId === card.id);
+      if (cr && cr.isCorrect) cardCorrect++;
+    });
+    const cardTotal = responses.length;
+    const cardAcc   = cardTotal > 0 ? Math.round((cardCorrect / cardTotal) * 100) : 0;
+    const cardAccColor = cardAcc < 40 ? '#f28b82' : cardAcc < 75 ? 'var(--yellow)' : 'var(--green-light)';
+    const correctWidth = cardTotal > 0 ? Math.round((cardCorrect / cardTotal) * 100) : 0;
+    const wrongWidth   = 100 - correctWidth;
+
+    return `
+      <div class="accordion-row" id="acc-row-${idx}">
+        <div class="accordion-trigger" onclick="toggleAccordionRow(${idx})">
+          <span class="accordion-num">Q${idx + 1}</span>
+          <span class="accordion-question">${escapeHTML(card.question)}</span>
+          <span class="accordion-acc" style="color:${cardAccColor};">${cardAcc}% correct</span>
+          <span class="accordion-caret">›</span>
+        </div>
+        <div class="accordion-body" id="acc-body-${idx}">
+          <div class="accordion-mini-bar-wrap">
+            <div class="accordion-mini-bar">
+              <div class="accordion-bar-correct" style="width:${correctWidth}%;" title="Correct: ${cardCorrect}"></div>
+              <div class="accordion-bar-wrong"   style="width:${wrongWidth}%;"   title="Wrong: ${cardTotal - cardCorrect}"></div>
+            </div>
+            <div class="accordion-bar-labels">
+              <span style="color:var(--green-light)">✓ Correct: ${cardCorrect}/${cardTotal}</span>
+              <span style="color:#f28b82">✗ Wrong: ${cardTotal - cardCorrect}/${cardTotal}</span>
+            </div>
+          </div>
+          <div class="accordion-answer"><strong>Answer:</strong> ${escapeHTML(card.answer)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  activeDiv.innerHTML = `
+    <div class="results-header">
+      <div class="results-header-left">
+        <div class="results-session-topic">${escapeHTML(session.topic)}</div>
+        <div class="results-session-meta">
+          <span>📅 ${session.date}</span>
+          <span>🏦 ${session.subject}</span>
+          <span>📝 ${totalCards} cards</span>
+          <span>👥 ${responses.length} submissions</span>
+        </div>
+        <div class="results-avg-acc" style="color:${accColor}">${avgAcc}% Average Accuracy</div>
+      </div>
+      <div class="results-header-right">
+        <button class="btn btn-outline btn-sm" onclick="exportSessionCSV('${escapeHTML(session.id)}')">
+          📄 Export CSV
+        </button>
+      </div>
+    </div>
+
+    <h3 class="results-section-title">👥 Student Breakdown</h3>
+    <div class="results-table-wrap">
+      <table class="results-student-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Answered</th>
+            <th>Correct</th>
+            <th>Accuracy</th>
+            <th>✓ Know</th>
+            <th>~ Fuzzy</th>
+            <th>✗ Don’t Know</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>${studentRowsHTML}</tbody>
+      </table>
+    </div>
+
+    <h3 class="results-section-title" style="margin-top:28px;">🏦 Per-Card Breakdown</h3>
+    <div class="results-card-accordion">
+      ${cardAccordionHTML}
+    </div>
+  `;
+}
+
+window.toggleAccordionRow = function(idx) {
+  const row  = document.getElementById(`acc-row-${idx}`);
+  const body = document.getElementById(`acc-body-${idx}`);
+  if (!row || !body) return;
+  const isOpen = row.classList.toggle('open');
+  body.style.maxHeight = isOpen ? body.scrollHeight + 'px' : '0';
+};
+
+// ── CSV Export ─────────────────────────────────────────
+window.exportSessionCSV = function(id) {
+  const session = window.EduStore.getSessionById(id);
+  if (!session) return;
+
+  const escape = val => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+  const rows = ['Session,Date,Student,Card Question,MCQ Correct,Self Rating'];
+
+  (session.responses || []).forEach(res => {
+    (res.cardResponses || []).forEach(cr => {
+      const card = session.cards.find(c => c.id === cr.cardId);
+      rows.push([
+        escape(session.topic),
+        escape(session.date),
+        escape(res.studentId),
+        escape(card ? card.question : cr.cardId),
+        escape(cr.isCorrect ? 'Yes' : 'No'),
+        escape(cr.rating || '')
+      ].join(','));
+    });
+  });
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href     = url;
+  link.download = `EduFlash_${session.topic.replace(/\s+/g, '_')}_${session.date}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  showToast('Results exported as CSV ✓', 'success');
+};

@@ -111,6 +111,10 @@
                   <span class="nav-sub-dot"></span>
                   Drafts
                 </div>
+                <div class="nav-sub-item" data-panel="results" id="sub-results">
+                  <span class="nav-sub-dot"></span>
+                  Session Results
+                </div>
               </div>
             </div>
           </div>
@@ -237,10 +241,10 @@
               <button class="btn btn-green" id="generate-btn" disabled>
                 ✨ Generate Flashcards
               </button>
-              <p class="form-hint">
-                Gemini AI integration coming soon —<br>
-                the form is ready and waiting.
-              </p>
+              <button class="btn btn-outline" id="save-draft-btn" disabled>
+                💾 Save Draft
+              </button>
+              <p class="form-hint" id="transcript-form-hint"></p>
             </div>
           </div>
         </div>
@@ -527,6 +531,18 @@
           </div>
         </div>
 
+        <!-- Panel: Session Results -->
+        <div class="panel-content" id="panel-results" role="tabpanel">
+          <div id="results-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">📋</div>
+            <div class="placeholder-title">No session selected</div>
+            <p class="placeholder-desc">Click "View Results" on any session to see the full student breakdown here.</p>
+          </div>
+          <div id="results-active" style="display:none;">
+            <!-- Populated by renderResultsPanel() -->
+          </div>
+        </div>
+
         <!-- ══════════════════════════════
              ANALYTICS PANELS
         ══════════════════════════════ -->
@@ -697,6 +713,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Day 7: Toast notification container -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
   <script src="js/firebase-store.js"></script>
   <script src="js/store.js"></script>
