@@ -1677,7 +1677,12 @@ async function generateCardsFromImages(files, subject, topic, date) {
       // Convert each File to a base64 inlineData object
       const imageDataArray = await Promise.all(files.map(fileToBase64Part));
       generatedCards = await callGeminiVisionAPI(apiKey, subject, topic, imageDataArray);
-    } else {
+    } catch (err) {
+      console.error('Gemini Vision failed:', err);
+      showToast('Gemini Vision API request failed. Falling back to Mock generator.', 'error');
+      generatedCards = getPremiumMockCards(subject, topic);
+    }
+  } else {
     // No API key — simulate delay then use mock
     await new Promise(resolve => setTimeout(resolve, 1800));
     generatedCards = getPremiumMockCards(subject, topic);
