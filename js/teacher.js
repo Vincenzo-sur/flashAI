@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Day 7: wire Save Draft button
   document.getElementById('save-draft-btn')?.addEventListener('click', saveAsDraft);
+
+  // Day 8: Google Classroom API Init
+  initGoogleClassroom();
 });
 
 // ── Sidebar collapse toggle & Accordion ─────────────────────
@@ -609,6 +612,7 @@ function publishSession() {
   tempSession.status = 'live';
   window.EduStore.addSession(tempSession);
   
+  const currentTopic = tempSession.topic;
   tempSession = null;
   
   // Clear paste form fields
@@ -622,6 +626,12 @@ function publishSession() {
   // Clear preview containers
   document.getElementById('preview-placeholder').style.display = 'flex';
   document.getElementById('preview-active').style.display = 'none';
+
+  // Pre-fill Google Classroom assignment title
+  const gcTitleInput = document.getElementById('gc-title-input');
+  if (gcTitleInput) gcTitleInput.value = `Revision Flashcards: ${currentTopic}`;
+  const gcPostedCard = document.getElementById('gc-posted-card');
+  if (gcPostedCard) gcPostedCard.style.display = 'none';
   
   // Switch to publish confirmation state
   switchPanel('publish');
@@ -1970,7 +1980,10 @@ function renderResultsPanel(id) {
         </div>
         <div class="results-avg-acc" style="color:${accColor}">${avgAcc}% Average Accuracy</div>
       </div>
-      <div class="results-header-right">
+      <div class="results-header-right" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-outline btn-sm" onclick="syncClassroomRoster('${escapeHTML(session.id)}')">
+          🎓 Sync Classroom Roster
+        </button>
         <button class="btn btn-outline btn-sm" onclick="exportSessionCSV('${escapeHTML(session.id)}')">
           📄 Export CSV
         </button>
@@ -2045,4 +2058,223 @@ window.exportSessionCSV = function(id) {
   URL.revokeObjectURL(url);
 
   showToast('Results exported as CSV ✓', 'success');
+};
+
+// ════════════════════════════════════════════════════════════
+//  Day 8: Google Classroom API Integration Helpers
+// ════════════════════════════════════════════════════════════
+async function initGoogleClassroom() {
+  const courseSelect = document.getElementById('gc-course-select');
+  if (!courseSelect) return;
+
+  try {
+    const courses = await window.ClassroomAPI.getCourses();
+    courseSelect.innerHTML = courses.map(c => `
+      <option value="${c.id}">${escapeHTML(c.name)} ${c.section ? '— ' + escapeHTML(c.section) : ''} (${c.enrollmentCode || c.id})</option>
+    `).join('');
+  } catch (e) {
+    console.warn('[Teacher] Failed to load Google Classroom courses:', e);
+  }
+
+  const publishBtn = document.getElementById('gc-publish-btn');
+  if (publishBtn) {
+    publishBtn.onclick = handleGoogleClassroomPost;
+  }
+
+  const copyLinkBtn = document.getElementById('gc-copy-link-btn');
+  if (copyLinkBtn) {
+    copyLinkBtn.onclick = handleCopyClassroomLink;
+  }
+}
+
+async function handleGoogleClassroomPost() {
+  const courseSelect   = document.getElementById('gc-course-select');
+  const postTypeSelect = document.getElementById('gc-post-type-select');
+  const titleInput     = document.getElementById('gc-title-input');
+  const dueDateInput   = document.getElementById('gc-due-date');
+  const maxPointsInput = document.getElementById('gc-max-points');
+
+  if (!courseSelect) return;
+
+  const courseId  = courseSelect.value;
+  const postType  = postTypeSelect?.value || 'coursework';
+  const title     = titleInput?.value.trim() || 'Revision Flashcards';
+  const dueDate   = dueDateInput?.value || '';
+  const maxPoints = maxPointsInput?.value || 100;
+
+  const sessions = window.EduStore.getSessions();
+  const targetSession = sessions.find(s => s.status === 'live') || sessions[0];
+
+  if (!targetSession) {
+    showToast('No active session available to post.', 'error');
+    return;
+  }
+
+  const postBtn = document.getElementById('gc-publish-btn');
+  if (postBtn) postBtn.disabled = true;
+
+  try {
+    let result;
+    if (postType === 'coursework') {
+      result = await window.ClassroomAPI.createCoursework(courseId, {
+        title,
+        description: `EduFlash AI Revision Deck for ${targetSession.topic}.\nAnswer questions and rate your confidence!`,
+        session: targetSession,
+        dueDate,
+        maxPoints
+      });
+    } else {
+      result = await window.ClassroomAPI.createAnnouncement(courseId, {
+        text: `📢 ${title}\nPractice your flashcards here!`,
+        session: targetSession
+      });
+    }
+
+    targetSession.classroomId  = courseId;
+    targetSession.courseWorkId = result.id;
+    targetSession.classroomUrl = result.alternateLink;
+    window.EduStore.updateSession(targetSession);
+
+    const postedCard  = document.getElementById('gc-posted-card');
+    const postedTitle = document.getElementById('gc-posted-title');
+    const postedDesc  = document.getElementById('gc-posted-desc');
+    const openLink    = document.getElementById('gc-open-classroom-link');
+
+    if (postedCard) {
+      postedCard.style.display = 'block';
+      if (postedTitle) postedTitle.textContent = `Posted to Google Classroom (${postType === 'coursework' ? 'Coursework' : 'Announcement'})!`;
+      if (postedDesc)  postedDesc.textContent  = `Successfully posted "${result.title || targetSession.topic}" to Google Classroom.`;
+      if (openLink)    openLink.href           = result.alternateLink || '#';
+    }
+
+    showToast('Posted to Google Classroom! 🎓', 'success');
+  } catch (err) {
+    console.error('Google Classroom Post Error:', err);
+    showToast('Failed to post to Google Classroom.', 'error');
+  } finally {
+    if (postBtn) postBtn.disabled = false;
+  }
+}
+
+function handleCopyClassroomLink() {
+  const sessions = window.EduStore.getSessions();
+  const targetSession = sessions.find(s => s.status === 'live') || sessions[0];
+  if (!targetSession) {
+    showToast('No session available to copy.', 'error');
+    return;
+  }
+  const appUrl = window.location.origin + window.location.pathname.replace('teacher.html', 'student.html');
+  const link = `${appUrl}?session=${targetSession.id}&courseId=${targetSession.classroomId || 'course-phy-101'}`;
+  navigator.clipboard.writeText(link).then(() => {
+    showToast('Student practice link copied to clipboard! 🔗', 'info');
+  }).catch(() => {
+    showToast(`Practice Link: ${link}`, 'info');
+  });
+}
+
+window.syncClassroomRoster = async function(sessionId) {
+  const session = window.EduStore.getSessionById(sessionId);
+  if (!session) return;
+
+  const roster = await window.ClassroomAPI.getRoster(session.classroomId || 'course-phy-101');
+  if (!roster || roster.length === 0) return;
+
+  if (!session.responses || session.responses.length === 0) {
+    session.responses = roster.slice(0, 6).map((st, i) => ({
+      studentId: st.profile?.name?.fullName || `Student ${i+1}`,
+      cardResponses: session.cards.map((c, cIdx) => ({
+        cardId: c.id,
+        selectedIndex: (c.correctIndex + (i % 2 === 0 ? 0 : 1)) % c.options.length,
+        isCorrect: (c.correctIndex === (c.correctIndex + (i % 2 === 0 ? 0 : 1)) % c.options.length),
+        rating: i % 3 === 0 ? 'know' : i % 3 === 1 ? 'fuzzy' : 'nope'
+      }))
+    }));
+  } else {
+    session.responses.forEach((resp, i) => {
+      if (roster[i]) {
+        resp.studentId = roster[i].profile?.name?.fullName || resp.studentId;
+      }
+    });
+  }
+
+  window.EduStore.updateSession(session);
+  renderResultsPanel(sessionId);
+  showToast('Google Classroom roster synced! 🎓', 'success');
+};
+
+// ════════════════════════════════════════════════════════════
+//  Day 9: Printable PDF / Study Sheet Generator Helpers
+// ════════════════════════════════════════════════════════════
+let showPrintAnswers = true;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const printPreviewBtn = document.getElementById('preview-print-btn');
+  if (printPreviewBtn) {
+    printPreviewBtn.onclick = () => {
+      const liveSessions = window.EduStore.getSessions().filter(s => s.status === 'live');
+      const target = liveSessions[0] || window.EduStore.getSessions()[0];
+      if (target) openPrintableStudyModal(target.id);
+      else showToast('No session available to print.', 'error');
+    };
+  }
+
+  const modal = document.getElementById('printable-study-modal');
+  const closeBtn = document.getElementById('printable-modal-close');
+  const cancelBtn = document.getElementById('printable-cancel-btn');
+  const toggleBtn = document.getElementById('toggle-answers-btn');
+  const printTrigger = document.getElementById('trigger-print-btn');
+
+  if (closeBtn)  closeBtn.onclick  = () => modal.classList.remove('open');
+  if (cancelBtn) cancelBtn.onclick = () => modal.classList.remove('open');
+
+  if (toggleBtn) {
+    toggleBtn.onclick = () => {
+      showPrintAnswers = !showPrintAnswers;
+      toggleBtn.textContent = showPrintAnswers ? '👁️ Hide Answers' : '👁️ Show Answers';
+      document.querySelectorAll('.printable-answer-box').forEach(box => {
+        box.style.display = showPrintAnswers ? 'block' : 'none';
+      });
+    };
+  }
+
+  if (printTrigger) {
+    printTrigger.onclick = () => {
+      window.print();
+    };
+  }
+});
+
+window.openPrintableStudyModal = function(sessionId) {
+  const session = window.EduStore.getSessionById(sessionId);
+  if (!session) return;
+
+  const modal = document.getElementById('printable-study-modal');
+  const paper = document.getElementById('printable-content-area');
+  if (!modal || !paper) return;
+
+  const cardItemsHTML = session.cards.map((c, i) => `
+    <div class="printable-card-item">
+      <div class="printable-card-num">Card #${i + 1} &bull; ${escapeHTML(c.topic || session.topic)}</div>
+      <div class="printable-question">Q: ${escapeHTML(c.question)}</div>
+      <div class="printable-options">
+        ${c.options.map((o, optIdx) => `<div>${String.fromCharCode(65 + optIdx)}. ${escapeHTML(o)}</div>`).join('')}
+      </div>
+      <div class="printable-answer-box" style="display:${showPrintAnswers ? 'block' : 'none'};">
+        <strong>Correct Answer:</strong> ${escapeHTML(c.options[c.correctIndex])}<br/>
+        <span style="font-size:0.75rem; color:#444;">${escapeHTML(c.answer)}</span>
+      </div>
+    </div>
+  `).join('');
+
+  paper.innerHTML = `
+    <div class="printable-header">
+      <h2 class="printable-title">📚 EduFlash AI Study Sheet</h2>
+      <p class="printable-subtitle">${escapeHTML(session.subject)} &bull; ${escapeHTML(session.topic)} &bull; Date: ${session.date}</p>
+    </div>
+    <div class="printable-grid">
+      ${cardItemsHTML}
+    </div>
+  `;
+
+  modal.classList.add('open');
 };

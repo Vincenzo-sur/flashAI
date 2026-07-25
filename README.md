@@ -54,8 +54,9 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **CSV export** — one-click download of full session results as a `.csv` file (Day 7)
 - [x] **Toast notification system** — slide-in toasts replace all `alert()` calls, with success/error/info variants (Day 7)
 - [x] **Landing page: How It Works** — 4-step visual flow with numbered badges, step connectors, and stats chips (Day 7)
-- [x] **Save as Draft** — quick-save subject+topic as a draft without generating cards (Day 7)
-- [ ] Google Classroom API (planned — future milestone)
+- [x] **Google Classroom API integration** — post coursework assignments & stream announcements directly to Google Classroom courses, sync rosters, and submit student practice grades (Day 8)
+- [x] **Gamified Student Practice Hub & Audio Accessibility** — 3 study modes (Standard, ⚡ Speed Sprint 15s timer, 🧠 Smart Missed Cards), Web Speech TTS read-aloud, Web Audio synth FX, and canvas particle confetti celebration (Day 9)
+- [x] **Printable PDF Study Sheet Generator** — 1-click 2-column study guide grid export with togglable answer key (Day 9)
 
 ---
 
@@ -149,13 +150,18 @@ cd flashAI
   - Real-time `onSnapshot` listener — teacher dashboard auto-refreshes when any student submits.
   - Firebase connection status dot in sidebar (pulsing green = cloud, grey = local).
   - 3 Chart.js 4 charts in the Analytics Overview panel: line (MCQ accuracy by session), doughnut (self-rating distribution), horizontal bar (per-topic accuracy).
-- [x] **Day 7: Report Cards, Export & Polish**
-  - Session Results panel: per-student table with real student IDs, cards answered, accuracy %, Know/Fuzzy/Don't Know counts, and grade badges (A ≥80% / B ≥65% / C ≥50% / D <50%).
-  - Per-card accordion showing correct vs wrong distribution bars and the answer.
-  - CSV export of full session results as a downloadable `.csv` file.
-  - Toast notification system replacing all `alert()` calls — slide-in from right, auto-dismiss, success/error/info variants.
-  - Landing page "How It Works" section: 4-step visual flow with numbered badges, connector arrows, and stats chips.
-  - "Save as Draft" button in transcript panel (requires subject + topic only, no transcript needed).
+- [x] **Day 8: Google Classroom API Integration**
+  - `classroom-api.js` adapter wrapping Google Classroom REST API v1 (`courses`, `courseWork`, `students`, `announcements`).
+  - Interactive Google Classroom mock service fallback for testing without cloud credentials.
+  - Course selector & coursework assignment form in Teacher Dashboard Publish panel (support for graded assignments & stream announcements with due date and max points).
+  - One-click "Sync Classroom Roster" in Session Results to map student submissions to real Google Classroom student profiles.
+  - Deep-link URL parameter support (`student.html?session=...&courseId=...`) with automatic Google Classroom grade turn-in on completion.
+- [x] **Day 9: Gamified Practice Modes, Audio Accessibility & PDF Study Sheets (Current)**
+  - 3 student study modes: Standard Review, ⚡ Speed Sprint (15s card timer bar with streak multipliers), and 🧠 Smart Missed Cards Focus.
+  - Web Speech API (`window.speechSynthesis`) for `🔊 Read Aloud` question/answer accessibility.
+  - Web Audio API procedural synthesizer sound chimes for correct choices, wrong choices, card flipping, and review completion.
+  - Canvas particle confetti celebration and achievement badges (*Speed Demon ⚡*, *Mastery 🎯*, *Streak Master 🔥*).
+  - 1-Click Printable PDF Study Sheet Generator with 2-column paper layout and answer key hide/show toggle.
 
 ---
 

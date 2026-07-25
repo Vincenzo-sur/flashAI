@@ -2074,3 +2074,84 @@
   color: var(--text-muted);
   line-height: 1.55;
 }
+
+/* ── Day 9: Printable Study Sheet & Print Styles ── */
+.printable-paper {
+  background: #ffffff;
+  color: #111111;
+  padding: 24px;
+  border-radius: 8px;
+  font-family: Arial, sans-serif;
+}
+.printable-header {
+  text-align: center;
+  border-bottom: 2px solid #222;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.printable-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+  color: #000000;
+}
+.printable-subtitle {
+  font-size: 0.88rem;
+  color: #555555;
+  margin: 0;
+}
+.printable-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.printable-card-item {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: #fdfdfd;
+  page-break-inside: avoid;
+}
+.printable-card-num {
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #666;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.printable-question {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 8px;
+}
+.printable-options {
+  font-size: 0.8rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+.printable-answer-box {
+  background: #eef7ed;
+  border-left: 3px solid #1e8e3e;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  color: #111;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-content-area,
+  #printable-content-area * {
+    visibility: visible;
+  }
+  #printable-content-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}

@@ -60,6 +60,25 @@
         <div id="session-picker-options" style="display: flex; flex-direction: column; gap: 8px;">
           <!-- Dynamically loaded session rows from local storage -->
         </div>
+
+        <!-- Day 9: Study Mode Selector -->
+        <div class="study-mode-selector" id="study-mode-selector" style="display:none; margin-top:14px;">
+          <p class="input-label" style="margin-bottom:6px;">Choose Study Mode</p>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+            <button class="study-mode-btn active" data-mode="standard">
+              <span style="font-size:1.1rem; display:block;">🎯</span>
+              <span style="font-size:0.75rem; font-weight:600;">Standard</span>
+            </button>
+            <button class="study-mode-btn" data-mode="speed">
+              <span style="font-size:1.1rem; display:block;">⚡</span>
+              <span style="font-size:0.75rem; font-weight:600;">Speed Sprint</span>
+            </button>
+            <button class="study-mode-btn" data-mode="smart">
+              <span style="font-size:1.1rem; display:block;">🧠</span>
+              <span style="font-size:0.75rem; font-weight:600;">Missed Only</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <button class="btn btn-green entry-btn" id="start-btn" disabled>
@@ -84,11 +103,27 @@
         </div>
       </div>
 
+      <!-- Day 9: Speed Challenge Timer Bar -->
+      <div class="speed-timer-wrap" id="speed-timer-wrap" style="display:none; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--yellow); font-weight:600; margin-bottom:4px;">
+          <span>⚡ Speed Sprint Timer</span>
+          <span id="speed-timer-text">15s</span>
+        </div>
+        <div style="height:6px; background:var(--bg-card); border-radius:3px; overflow:hidden; border:1px solid var(--border);">
+          <div id="speed-timer-bar" style="height:100%; width:100%; background:var(--yellow); transition: width 1s linear;"></div>
+        </div>
+      </div>
+
       <!-- Review Card -->
       <div class="flashcard" id="review-flashcard">
         <!-- Header -->
         <div class="card-header" id="card-header-click" title="Click to flip">
-          <span class="card-header-label" id="card-label">Question</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="card-header-label" id="card-label">Question</span>
+            <button id="tts-read-btn" type="button" style="background:rgba(255,255,255,0.08); border:1px solid var(--border-light); color:var(--text); font-size:0.72rem; padding:2px 8px; border-radius:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Read aloud using Speech Synthesis">
+              🔊 Read
+            </button>
+          </div>
           <span class="card-header-tag" id="card-tag">Topic</span>
         </div>
 
@@ -141,9 +176,20 @@
       <!-- Day 6: sync status shown briefly after submit -->
       <div id="sync-status" style="display:none; font-size:0.78rem; color:var(--green-light); margin-bottom: 8px; text-align:center; animation: fadeIn 0.4s ease;"></div>
       
+      <!-- Day 8: Google Classroom Turn-In Status -->
+      <div id="gc-student-status" style="display:none; background: rgba(52,168,83,0.12); border: 1px solid rgba(52,168,83,0.3); border-radius: var(--radius); padding: 10px 14px; width: 100%; margin-bottom: 14px; text-align: center; animation: fadeIn 0.4s ease;">
+        <span style="font-size: 0.82rem; color: var(--green-light); font-weight: 500;">🎓 Turned in to Google Classroom</span>
+      </div>
+
       <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; width: 100%; margin-bottom: 20px;">
         <span style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase;">MCQ ACCURACY</span>
         <div class="completion-accuracy" id="completion-accuracy">85%</div>
+        
+        <!-- Day 9: Achievements Strip -->
+        <div id="student-achievements" style="display:flex; justify-content:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+          <span class="achievement-chip" id="badge-accuracy">🎯 High Accuracy</span>
+          <span class="achievement-chip" id="badge-streak">🔥 Streak Master</span>
+        </div>
       </div>
 
       <button class="btn btn-green entry-btn" id="exit-btn">
@@ -153,6 +199,10 @@
 
   </div>
 
+  <!-- Day 9: Canvas Confetti -->
+  <canvas id="confetti-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; display:none;"></canvas>
+
+  <script src="js/classroom-api.js"></script>
   <script src="js/firebase-store.js"></script>
   <script src="js/store.js"></script>
   <script src="js/auth.js"></script>

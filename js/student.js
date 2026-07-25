@@ -14,7 +14,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   initStudentEntry();
   initReviewControls();
+  checkUrlParams();
 });
+
+// ── Check URL Parameters for Direct Links (Day 8) ────────────
+function checkUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session');
+  const code = params.get('code') || params.get('courseId');
+
+  const codeInput = document.getElementById('class-code-input');
+  if (code && codeInput) {
+    codeInput.value = code;
+    codeInput.dispatchEvent(new Event('input'));
+  }
+
+  if (sessionId) {
+    setTimeout(() => {
+      const sessionOption = document.querySelector(`.session-option[data-id="${sessionId}"]`);
+      if (sessionOption) {
+        sessionOption.click();
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn && !startBtn.disabled) startBtn.click();
+      }
+    }, 150);
+  }
+}
 
 // ── Entry Code Validation & Session Selection ───────────────
 function initStudentEntry() {
@@ -101,7 +126,8 @@ function startReview(session) {
 
 // ── Render Flashcard in Reviewer ───────────────────────────
 function renderCard() {
-  if (!currentSession) return;
+  if (!currentSession || !currentSession.cards[currentCardIndex]) return;
+
   const card = currentSession.cards[currentCardIndex];
   const flashcard = document.getElementById('review-flashcard');
   
@@ -112,6 +138,26 @@ function renderCard() {
   document.getElementById('review-question').textContent = card.question;
   document.getElementById('review-answer').textContent = card.answer;
   document.getElementById('card-tag').textContent = card.topic || currentSession.topic;
+
+  // Wire TTS button
+  const ttsBtn = document.getElementById('tts-read-btn');
+  if (ttsBtn) {
+    ttsBtn.onclick = (e) => {
+      e.stopPropagation();
+      const speechText = `${card.question}. Options: ${card.options.join(', ')}`;
+      TTSManager.speak(speechText);
+    };
+  }
+
+  // Handle Speed Challenge Timer
+  const timerWrap = document.getElementById('speed-timer-wrap');
+  if (selectedStudyMode === 'speed') {
+    if (timerWrap) timerWrap.style.display = 'block';
+    startSpeedTimer();
+  } else if (timerWrap) {
+    timerWrap.style.display = 'none';
+    stopSpeedTimer();
+  }
   
   // Fill MCQ Options
   const optionsContainer = document.getElementById('review-options');
@@ -162,6 +208,7 @@ function renderCard() {
   // Header Manual Flip Trigger
   const headerClick = document.getElementById('card-header-click');
   headerClick.onclick = () => {
+    SoundFX.playFlip();
     flashcard.classList.toggle('flipped');
   };
 
@@ -189,10 +236,44 @@ function renderCard() {
   nextBtn.disabled = savedAnswer === null || !savedAnswer.rating;
 }
 
+function startSpeedTimer() {
+  stopSpeedTimer();
+  speedSecondsLeft = 15;
+  const textEl = document.getElementById('speed-timer-text');
+  const barEl  = document.getElementById('speed-timer-bar');
+  if (textEl) textEl.textContent = `${speedSecondsLeft}s`;
+  if (barEl)  barEl.style.width  = '100%';
+
+  speedTimerInterval = setInterval(() => {
+    speedSecondsLeft--;
+    if (textEl) textEl.textContent = `${speedSecondsLeft}s`;
+    if (barEl)  barEl.style.width  = `${Math.round((speedSecondsLeft / 15) * 100)}%`;
+
+    if (speedSecondsLeft <= 0) {
+      stopSpeedTimer();
+      // Auto choose option 0 if un-answered
+      if (sessionAnswers[currentCardIndex] === null) {
+        handleOptionSelection(0, currentSession.cards[currentCardIndex].correctIndex);
+      }
+    }
+  }, 1000);
+}
+
+function stopSpeedTimer() {
+  if (speedTimerInterval) {
+    clearInterval(speedTimerInterval);
+    speedTimerInterval = null;
+  }
+}
+
 // ── MCQ Selection Handler ──────────────────────────────────
 function handleOptionSelection(optIndex, correctIndex) {
+  stopSpeedTimer();
   const card = currentSession.cards[currentCardIndex];
   const isCorrect = optIndex === correctIndex;
+
+  if (isCorrect) SoundFX.playCorrect();
+  else           SoundFX.playWrong();
 
   sessionAnswers[currentCardIndex] = {
     cardId: card.id,
@@ -223,6 +304,7 @@ function handleOptionSelection(optIndex, correctIndex) {
   setTimeout(() => {
     const flashcard = document.getElementById('review-flashcard');
     if (flashcard && !flashcard.classList.contains('flipped')) {
+      SoundFX.playFlip();
       flashcard.classList.add('flipped');
     }
   }, 1200);
@@ -301,6 +383,10 @@ async function finishReview() {
   document.getElementById('review-container').classList.remove('visible');
   document.getElementById('completion-container').classList.add('visible');
 
+  // Day 9: Sound & Confetti celebration
+  SoundFX.playFanfare();
+  launchConfetti();
+
   // Render results
   const accEl = document.getElementById('completion-accuracy');
   accEl.textContent = `${accuracy}%`;
@@ -322,6 +408,21 @@ async function finishReview() {
     syncEl.textContent = window.EduStore.isFirebaseEnabled()
       ? '✅ Synced to cloud — teacher dashboard updated!'
       : '✅ Saved locally';
+  }
+
+  // Day 8: Google Classroom Turn-In
+  const params = new URLSearchParams(window.location.search);
+  const courseId = params.get('courseId') || currentSession.classroomId || 'course-phy-101';
+  const courseWorkId = currentSession.courseWorkId || 'cw-mock-1';
+  const gcStatusEl = document.getElementById('gc-student-status');
+
+  if (window.ClassroomAPI && gcStatusEl) {
+    try {
+      await window.ClassroomAPI.submitStudentTurnIn(courseId, courseWorkId, accuracy);
+      gcStatusEl.style.display = 'block';
+    } catch (e) {
+      console.warn('Classroom turn in error:', e);
+    }
   }
 }
 

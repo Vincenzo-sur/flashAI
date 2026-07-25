@@ -20,6 +20,10 @@ const defaultSessions = [
     topic: "Newton's Laws of Motion",
     date: new Date().toISOString().split('T')[0],
     status: 'live',
+    classroomId: 'course-phy-101',
+    courseName: 'AP Physics 1 — Period 3',
+    classroomUrl: 'https://classroom.google.com/c/course-phy-101',
+    courseWorkId: 'cw-mock-1',
     cards: [
       {
         id: 'card-1-1',
