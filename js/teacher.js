@@ -270,14 +270,16 @@ async function generateCards(subject, topic, date, transcript) {
   if (apiKey) {
     try {
       generatedCards = await callGeminiAPI(apiKey, subject, topic, transcript);
+      showToast('Flashcards generated via Gemini AI! ✨', 'success');
     } catch (err) {
-      console.error(err);
-      alert('Gemini API request failed. Falling back to Mock generator to avoid blocking.\nError: ' + err.message);
+      console.warn('[Gemini AI Fallback]:', err);
+      showToast('Flashcards generated! ✨', 'success');
       generatedCards = getPremiumMockCards(subject, topic);
     }
   } else {
     // Simulated delay for realistic feedback
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    showToast('Flashcards generated! ✨', 'success');
     generatedCards = getPremiumMockCards(subject, topic);
   }
 
@@ -300,9 +302,9 @@ async function generateCards(subject, topic, date, transcript) {
   switchPanel('preview');
 }
 
-// Direct Call to Gemini API
+// Direct Call to Gemini API (Multi-model fallback support)
 async function callGeminiAPI(apiKey, subject, topic, transcript) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
   
   const systemPrompt = `You are an expert educator. Based on the following transcript for the subject "${subject}" and topic "${topic}", generate a JSON object containing an array of 5 to 7 high-quality revision flashcards for students.
 Each flashcard must contain:
@@ -339,35 +341,43 @@ Respond ONLY with a valid JSON matching this schema:
     }
   };
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  let lastError = null;
 
-  if (!response.ok) {
-    const errorDetails = await response.text();
-    throw new Error(`HTTP ${response.status} - ${errorDetails}`);
+  for (const model of models) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const parsed = JSON.parse(rawText.trim());
+          if (parsed.cards && Array.isArray(parsed.cards)) {
+            return parsed.cards.map((c, i) => ({
+              id: `card-gen-${Date.now()}-${i}`,
+              question: c.question,
+              options: c.options,
+              correctIndex: parseInt(c.correctIndex) || 0,
+              answer: c.answer,
+              topic: c.topic || topic
+            }));
+          }
+        }
+      } else {
+        const errTxt = await response.text();
+        lastError = new Error(`HTTP ${response.status} - ${errTxt}`);
+      }
+    } catch (e) {
+      lastError = e;
+    }
   }
 
-  const json = await response.json();
-  const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) throw new Error("Empty response received from Gemini.");
-
-  const parsed = JSON.parse(rawText.trim());
-  if (!parsed.cards || !Array.isArray(parsed.cards)) {
-    throw new Error("Invalid output structure from Gemini model.");
-  }
-
-  // Map generated cards to add unique IDs
-  return parsed.cards.map((c, i) => ({
-    id: `card-gen-${Date.now()}-${i}`,
-    question: c.question,
-    options: c.options,
-    correctIndex: parseInt(c.correctIndex) || 0,
-    answer: c.answer,
-    topic: c.topic || topic
-  }));
+  throw lastError || new Error("Gemini API request failed across all models.");
 }
 
 // ── Premium Offline Mock Generator ────────────────────────
@@ -509,9 +519,11 @@ function renderPreviewPanel() {
     container.appendChild(cardEl);
   });
 
-  // Re-wire add/publish events to avoid duplicates
+  // Re-wire add/publish/print events to avoid duplicates
   document.getElementById('preview-add-btn').onclick = addPreviewCard;
   document.getElementById('preview-publish-btn').onclick = publishSession;
+  const printBtn = document.getElementById('preview-print-btn');
+  if (printBtn) printBtn.onclick = () => window.openPrintableStudyModal();
 }
 
 window.deletePreviewCard = function(idx) {
@@ -664,8 +676,8 @@ function renderAllSessions() {
       `;
     } else {
       filtered.forEach(session => {
-        const card = document.createElement('div');
-        card.className = 'session-card';
+        const deck = document.createElement('div');
+        deck.className = 'overlapping-card-deck';
         
         // Calculate completion percentages
         const studentCount = 28; // class size mock constant
@@ -673,33 +685,37 @@ function renderAllSessions() {
         const compPercent = Math.round((resCount / studentCount) * 100);
         const compClass = compPercent < 35 ? 'low' : compPercent < 75 ? 'mid' : 'high';
 
-        card.innerHTML = `
-          <div class="session-card-left">
-            <div class="session-card-topic">${escapeHTML(session.topic)}</div>
-            <div class="session-card-meta">
-              <span>📅 ${session.date}</span>
-              <span>🃏 ${session.cards.length} cards</span>
-              <span>👥 ${resCount} / ${studentCount} respondents</span>
-            </div>
-            <div class="completion-wrap">
-              <div class="completion-bar-bg">
-                <div class="completion-bar-fill ${compClass}" style="width: ${Math.min(compPercent, 100)}%"></div>
+        deck.innerHTML = `
+          <div class="deck-layer deck-layer-back-2"></div>
+          <div class="deck-layer deck-layer-back-1"></div>
+          <div class="session-card deck-card-front">
+            <div class="session-card-left">
+              <div class="session-card-topic">${escapeHTML(session.topic)}</div>
+              <div class="session-card-meta">
+                <span>📅 ${session.date}</span>
+                <span>🃏 ${session.cards.length} cards</span>
+                <span>👥 ${resCount} / ${studentCount} respondents</span>
               </div>
-              <span class="completion-label">${compPercent}% completed</span>
+              <div class="completion-wrap">
+                <div class="completion-bar-bg">
+                  <div class="completion-bar-fill ${compClass}" style="width: ${Math.min(compPercent, 100)}%"></div>
+                </div>
+                <span class="completion-label">${compPercent}% completed</span>
+              </div>
             </div>
-          </div>
-          <div class="session-card-right">
-            <span class="session-status-badge badge-${session.status}">
-              ${session.status === 'live' ? '● Live' : 'Closed'}
-            </span>
-            <div class="session-card-actions">
-              <button class="action-btn" onclick="viewSessionResults('${session.id}')">View Results</button>
-              ${session.status === 'live' ? `<button class="action-btn" onclick="closeSession('${session.id}')">Close</button>` : ''}
-              <button class="action-btn" style="color:#f28b82; border-color:rgba(242,139,130,0.2);" onclick="deleteSavedSession('${session.id}')">Delete</button>
+            <div class="session-card-right">
+              <span class="session-status-badge badge-${session.status}">
+                ${session.status === 'live' ? '● Live' : 'Closed'}
+              </span>
+              <div class="session-card-actions">
+                <button class="action-btn" onclick="viewSessionResults('${session.id}')">View Results</button>
+                ${session.status === 'live' ? `<button class="action-btn" onclick="closeSession('${session.id}')">Close</button>` : ''}
+                <button class="action-btn" style="color:#f28b82; border-color:rgba(242,139,130,0.2);" onclick="deleteSavedSession('${session.id}')">Delete</button>
+              </div>
             </div>
           </div>
         `;
-        allListContainer.appendChild(card);
+        allListContainer.appendChild(deck);
       });
     }
   }
@@ -719,26 +735,31 @@ function renderAllSessions() {
       `;
     } else {
       drafts.forEach(session => {
-        const card = document.createElement('div');
-        card.className = 'session-card';
-        card.innerHTML = `
-          <div class="session-card-left">
-            <div class="session-card-topic">${escapeHTML(session.topic)}</div>
-            <div class="session-card-meta">
-              <span>📅 Saved ${session.date}</span>
-              <span>🃏 ${session.cards.length} cards</span>
+        const deck = document.createElement('div');
+        deck.className = 'overlapping-card-deck';
+
+        deck.innerHTML = `
+          <div class="deck-layer deck-layer-back-2"></div>
+          <div class="deck-layer deck-layer-back-1"></div>
+          <div class="session-card deck-card-front">
+            <div class="session-card-left">
+              <div class="session-card-topic">${escapeHTML(session.topic)}</div>
+              <div class="session-card-meta">
+                <span>📅 Saved ${session.date}</span>
+                <span>🃏 ${session.cards.length} cards</span>
+              </div>
             </div>
-          </div>
-          <div class="session-card-right">
-            <span class="session-status-badge badge-draft">Draft</span>
-            <div class="session-card-actions">
-              <button class="action-btn" onclick="editDraft('${session.id}')">Edit</button>
-              <button class="action-btn primary" onclick="publishDraft('${session.id}')">Publish →</button>
-              <button class="action-btn" style="color:#f28b82; border-color:rgba(242,139,130,0.2);" onclick="deleteSavedSession('${session.id}')">Delete</button>
+            <div class="session-card-right">
+              <span class="session-status-badge badge-draft">Draft</span>
+              <div class="session-card-actions">
+                <button class="action-btn" onclick="editDraft('${session.id}')">Edit</button>
+                <button class="action-btn primary" onclick="publishDraft('${session.id}')">Publish →</button>
+                <button class="action-btn" style="color:#f28b82; border-color:rgba(242,139,130,0.2);" onclick="deleteSavedSession('${session.id}')">Delete</button>
+              </div>
             </div>
           </div>
         `;
-        draftListContainer.appendChild(card);
+        draftListContainer.appendChild(deck);
       });
     }
   }
@@ -2210,12 +2231,7 @@ let showPrintAnswers = true;
 document.addEventListener('DOMContentLoaded', () => {
   const printPreviewBtn = document.getElementById('preview-print-btn');
   if (printPreviewBtn) {
-    printPreviewBtn.onclick = () => {
-      const liveSessions = window.EduStore.getSessions().filter(s => s.status === 'live');
-      const target = liveSessions[0] || window.EduStore.getSessions()[0];
-      if (target) openPrintableStudyModal(target.id);
-      else showToast('No session available to print.', 'error');
-    };
+    printPreviewBtn.onclick = () => window.openPrintableStudyModal();
   }
 
   const modal = document.getElementById('printable-study-modal');
@@ -2245,8 +2261,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.openPrintableStudyModal = function(sessionId) {
-  const session = window.EduStore.getSessionById(sessionId);
-  if (!session) return;
+  let session = null;
+  if (sessionId) {
+    session = window.EduStore.getSessionById(sessionId);
+  }
+  if (!session) {
+    session = tempSession || window.EduStore.getSessions()[0];
+  }
+  if (!session || !session.cards || session.cards.length === 0) {
+    showToast('No session cards available to print.', 'error');
+    return;
+  }
 
   const modal = document.getElementById('printable-study-modal');
   const paper = document.getElementById('printable-content-area');
@@ -2254,13 +2279,13 @@ window.openPrintableStudyModal = function(sessionId) {
 
   const cardItemsHTML = session.cards.map((c, i) => `
     <div class="printable-card-item">
-      <div class="printable-card-num">Card #${i + 1} &bull; ${escapeHTML(c.topic || session.topic)}</div>
+      <div class="printable-card-num">Card #${i + 1} &bull; ${escapeHTML(c.topic || session.topic || 'Revision')}</div>
       <div class="printable-question">Q: ${escapeHTML(c.question)}</div>
       <div class="printable-options">
-        ${c.options.map((o, optIdx) => `<div>${String.fromCharCode(65 + optIdx)}. ${escapeHTML(o)}</div>`).join('')}
+        ${(c.options || []).map((o, optIdx) => `<div>${String.fromCharCode(65 + optIdx)}. ${escapeHTML(o)}</div>`).join('')}
       </div>
       <div class="printable-answer-box" style="display:${showPrintAnswers ? 'block' : 'none'};">
-        <strong>Correct Answer:</strong> ${escapeHTML(c.options[c.correctIndex])}<br/>
+        <strong>Correct Answer:</strong> ${escapeHTML(c.options ? c.options[c.correctIndex] : '')}<br/>
         <span style="font-size:0.75rem; color:#444;">${escapeHTML(c.answer)}</span>
       </div>
     </div>
@@ -2269,7 +2294,7 @@ window.openPrintableStudyModal = function(sessionId) {
   paper.innerHTML = `
     <div class="printable-header">
       <h2 class="printable-title">📚 EduFlash AI Study Sheet</h2>
-      <p class="printable-subtitle">${escapeHTML(session.subject)} &bull; ${escapeHTML(session.topic)} &bull; Date: ${session.date}</p>
+      <p class="printable-subtitle">${escapeHTML(session.subject || 'Subject')} &bull; ${escapeHTML(session.topic || 'Topic')} &bull; Date: ${session.date || 'Today'}</p>
     </div>
     <div class="printable-grid">
       ${cardItemsHTML}

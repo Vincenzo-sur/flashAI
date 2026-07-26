@@ -57,6 +57,7 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Google Classroom API integration** — post coursework assignments & stream announcements directly to Google Classroom courses, sync rosters, and submit student practice grades (Day 8)
 - [x] **Gamified Student Practice Hub & Audio Accessibility** — 3 study modes (Standard, ⚡ Speed Sprint 15s timer, 🧠 Smart Missed Cards), Web Speech TTS read-aloud, Web Audio synth FX, and canvas particle confetti celebration (Day 9)
 - [x] **Printable PDF Study Sheet Generator** — 1-click 2-column study guide grid export with togglable answer key (Day 9)
+- [x] **Day 10 UI Enhancements & Issues Fixes** — Centered Paste Transcript & Upload Notes layouts, 3D overlapping stacked card decks for Sessions and Drafts, Web Speech TTS read button fix, and Speed Sprint card percentage & 15s countdown timer fix (Day 10)
 
 ---
 
@@ -156,12 +157,18 @@ cd flashAI
   - Course selector & coursework assignment form in Teacher Dashboard Publish panel (support for graded assignments & stream announcements with due date and max points).
   - One-click "Sync Classroom Roster" in Session Results to map student submissions to real Google Classroom student profiles.
   - Deep-link URL parameter support (`student.html?session=...&courseId=...`) with automatic Google Classroom grade turn-in on completion.
-- [x] **Day 9: Gamified Practice Modes, Audio Accessibility & PDF Study Sheets (Current)**
+- [x] **Day 9: Gamified Practice Modes, Audio Accessibility & PDF Study Sheets**
   - 3 student study modes: Standard Review, ⚡ Speed Sprint (15s card timer bar with streak multipliers), and 🧠 Smart Missed Cards Focus.
   - Web Speech API (`window.speechSynthesis`) for `🔊 Read Aloud` question/answer accessibility.
   - Web Audio API procedural synthesizer sound chimes for correct choices, wrong choices, card flipping, and review completion.
   - Canvas particle confetti celebration and achievement badges (*Speed Demon ⚡*, *Mastery 🎯*, *Streak Master 🔥*).
   - 1-Click Printable PDF Study Sheet Generator with 2-column paper layout and answer key hide/show toggle.
+- [x] **Day 10: Centered Creation Panels, 3D Overlapping Card Decks & Bug Resolution (Current)**
+  - Web Speech API `TTSManager` & `SoundFX` helper definitions resolving the Read button speech issue.
+  - Dynamic card progress calculator (`Card X of Y`, `${Math.round(X/Y * 100)}%`) resolving the 2-card 20% / 5-card count display bug.
+  - 15-second Speed Sprint countdown timer interval logic with animated draining progress bar.
+  - Center-aligned layout for Paste Transcript & Upload Notes creation panels (`#panel-transcript`, `#panel-upload`).
+  - 3D Overlapping Stacked Card Format (`.overlapping-card-deck`) with background layers and hover fan-out keyframe animations for Sessions and Drafts lists.
 
 ---
 
