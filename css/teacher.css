@@ -2159,8 +2159,8 @@
 /* ────────────────────────────────────────────
    DAY 10 — CENTERED PANELS (TRANSCRIPT & UPLOAD)
 ──────────────────────────────────────────── */
-#panel-transcript,
-#panel-upload {
+#panel-transcript.active,
+#panel-upload.active {
   display: flex;
   flex-direction: column;
   align-items: center;
