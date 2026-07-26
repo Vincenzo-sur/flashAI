@@ -689,29 +689,27 @@ function renderAllSessions() {
           <div class="deck-layer deck-layer-back-2"></div>
           <div class="deck-layer deck-layer-back-1"></div>
           <div class="session-card deck-card-front">
-            <div class="session-card-left">
-              <div class="session-card-topic">${escapeHTML(session.topic)}</div>
-              <div class="session-card-meta">
-                <span>📅 ${session.date}</span>
-                <span>🃏 ${session.cards.length} cards</span>
-                <span>👥 ${resCount} / ${studentCount} respondents</span>
-              </div>
-              <div class="completion-wrap">
-                <div class="completion-bar-bg">
-                  <div class="completion-bar-fill ${compClass}" style="width: ${Math.min(compPercent, 100)}%"></div>
-                </div>
-                <span class="completion-label">${compPercent}% completed</span>
-              </div>
-            </div>
-            <div class="session-card-right">
+            <div class="session-card-header">
+              <div class="session-card-topic" title="${escapeHTML(session.topic)}">${escapeHTML(session.topic)}</div>
               <span class="session-status-badge badge-${session.status}">
                 ${session.status === 'live' ? '● Live' : 'Closed'}
               </span>
-              <div class="session-card-actions">
-                <button class="action-btn" onclick="viewSessionResults('${session.id}')">View Results</button>
-                ${session.status === 'live' ? `<button class="action-btn" onclick="closeSession('${session.id}')">Close</button>` : ''}
-                <button class="action-btn" style="color:#f28b82; border-color:rgba(242,139,130,0.2);" onclick="deleteSavedSession('${session.id}')">Delete</button>
+            </div>
+            <div class="session-card-meta">
+              <span>📅 ${session.date}</span>
+              <span>🃏 ${session.cards.length} cards</span>
+              <span>👥 ${resCount} / ${studentCount} respondents</span>
+            </div>
+            <div class="completion-wrap">
+              <div class="completion-bar-bg">
+                <div class="completion-bar-fill ${compClass}" style="width: ${Math.min(compPercent, 100)}%"></div>
               </div>
+              <span class="completion-label">${compPercent}% completed</span>
+            </div>
+            <div class="session-card-footer">
+              <button class="action-btn" onclick="viewSessionResults('${session.id}')">View Results</button>
+              ${session.status === 'live' ? `<button class="action-btn" onclick="closeSession('${session.id}')">Close</button>` : ''}
+              <button class="action-btn action-btn-danger" onclick="deleteSavedSession('${session.id}')">Delete</button>
             </div>
           </div>
         `;
@@ -742,20 +740,21 @@ function renderAllSessions() {
           <div class="deck-layer deck-layer-back-2"></div>
           <div class="deck-layer deck-layer-back-1"></div>
           <div class="session-card deck-card-front">
-            <div class="session-card-left">
-              <div class="session-card-topic">${escapeHTML(session.topic)}</div>
-              <div class="session-card-meta">
-                <span>📅 Saved ${session.date}</span>
-                <span>🃏 ${session.cards.length} cards</span>
-              </div>
-            </div>
-            <div class="session-card-right">
+            <div class="session-card-header">
+              <div class="session-card-topic" title="${escapeHTML(session.topic)}">${escapeHTML(session.topic)}</div>
               <span class="session-status-badge badge-draft">Draft</span>
-              <div class="session-card-actions">
-                <button class="action-btn" onclick="editDraft('${session.id}')">Edit</button>
-                <button class="action-btn primary" onclick="publishDraft('${session.id}')">Publish →</button>
-                <button class="action-btn" style="color:#f28b82; border-color:rgba(242,139,130,0.2);" onclick="deleteSavedSession('${session.id}')">Delete</button>
-              </div>
+            </div>
+            <div class="session-card-meta">
+              <span>📅 Saved ${session.date}</span>
+              <span>🃏 ${session.cards.length} cards</span>
+            </div>
+            <div class="completion-wrap" style="margin-top:4px;">
+              <span class="completion-label" style="color: var(--text-dim); font-size: 0.78rem;">Not published yet</span>
+            </div>
+            <div class="session-card-footer">
+              <button class="action-btn" onclick="editDraft('${session.id}')">Edit</button>
+              <button class="action-btn primary" onclick="publishDraft('${session.id}')">Publish →</button>
+              <button class="action-btn action-btn-danger" onclick="deleteSavedSession('${session.id}')">Delete</button>
             </div>
           </div>
         `;
