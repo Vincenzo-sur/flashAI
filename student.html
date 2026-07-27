@@ -22,6 +22,8 @@
         EduFlash <em>AI</em>
       </a>
       <div class="navbar-right">
+        <!-- Day 11: Theme Toggle -->
+        <button class="theme-toggle" id="theme-toggle" title="Toggle theme">🌙</button>
         <span class="nav-badge" style="background:rgba(251,188,4,0.1);color:var(--yellow);border-color:rgba(251,188,4,0.25);">Student</span>
         <a href="teacher.html" class="btn btn-ghost btn-sm" id="nav-teacher-link">Switch to Teacher</a>
         <button class="btn btn-outline btn-sm" id="nav-signin-btn">👤 Sign In</button>
@@ -61,10 +63,14 @@
           <!-- Dynamically loaded session rows from local storage -->
         </div>
 
-        <!-- Day 9: Study Mode Selector -->
+        <!-- Day 9/11: Study Mode Selector -->
         <div class="study-mode-selector" id="study-mode-selector" style="display:none; margin-top:14px;">
-          <p class="input-label" style="margin-bottom:6px;">Choose Study Mode</p>
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <p class="input-label" style="margin-bottom:0;">Choose Study Mode</p>
+            <!-- Day 11: Due cards badge -->
+            <span class="due-badge" id="due-cards-badge" style="display:none;">0 cards due</span>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
             <button class="study-mode-btn active" data-mode="standard">
               <span style="font-size:1.1rem; display:block;">🎯</span>
               <span style="font-size:0.75rem; font-weight:600;">Standard</span>
@@ -76,6 +82,11 @@
             <button class="study-mode-btn" data-mode="smart">
               <span style="font-size:1.1rem; display:block;">🧠</span>
               <span style="font-size:0.75rem; font-weight:600;">Missed Only</span>
+            </button>
+            <!-- Day 11: Spaced Repetition -->
+            <button class="study-mode-btn" data-mode="spaced">
+              <span style="font-size:1.1rem; display:block;">📦</span>
+              <span style="font-size:0.75rem; font-weight:600;">Spaced Review</span>
             </button>
           </div>
         </div>
@@ -192,11 +203,97 @@
         </div>
       </div>
 
+      <!-- Day 11: Student Personal Analytics Dashboard -->
+      <div id="student-analytics" style="display:none; width:100%;">
+        <div class="student-analytics-header">📊 Your Progress</div>
+        <div class="analytics-grid">
+          <div class="analytics-card" id="analytics-trend">
+            <div class="analytics-card-title">Accuracy Trend</div>
+            <canvas id="sparkline-canvas" width="200" height="60"></canvas>
+          </div>
+          <div class="analytics-card" id="analytics-streak">
+            <div class="analytics-card-title">🔥 Study Streak</div>
+            <div id="streak-display"></div>
+          </div>
+          <div class="analytics-card" id="analytics-mastery">
+            <div class="analytics-card-title">Topic Mastery</div>
+            <div id="mastery-bars"></div>
+          </div>
+          <div class="analytics-card" id="analytics-best">
+            <div class="analytics-card-title">🏆 Personal Best</div>
+            <div id="personal-best-display"></div>
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-green entry-btn" id="exit-btn">
         Done &amp; Exit
       </button>
     </div>
 
+  </div>
+
+  <!-- Day 11: EduBot AI Tutor Floating Action Trigger -->
+  <button class="edubot-fab" id="edubot-fab" style="display: none;" title="Open EduBot AI Tutor">
+    <span style="font-size: 1.2rem;">🤖</span>
+    <span class="edubot-fab-text">Ask AI Tutor</span>
+  </button>
+
+  <!-- Day 11: EduBot AI Tutor Sliding Drawer Modal -->
+  <div class="edubot-drawer-overlay" id="edubot-drawer-overlay" style="display: none;">
+    <div class="edubot-drawer" id="edubot-drawer">
+      <div class="edubot-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">🤖</span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.02rem; font-family: 'Google Sans', sans-serif; color: var(--green-light);">EduBot AI Tutor</h3>
+            <span style="font-size: 0.72rem; color: var(--text-dim);" id="edubot-topic-badge">Topic: Active Card</span>
+          </div>
+        </div>
+        <button class="edubot-close-btn" id="edubot-close-btn">&times;</button>
+      </div>
+
+      <!-- Chat Messages Container -->
+      <div class="edubot-messages" id="edubot-messages">
+        <div class="edubot-msg assistant">
+          👋 Hi! I'm <strong>EduBot</strong>, your personal AI tutor. Ask me anything about this card or choose a quick helper prompt below!
+        </div>
+      </div>
+
+      <!-- Quick Action Prompts -->
+      <div class="edubot-quick-prompts">
+        <button class="edubot-chip" data-prompt="Explain why the correct answer is right step-by-step">💡 Step-by-step</button>
+        <button class="edubot-chip" data-prompt="Give me a real-world analogy for this concept">🌍 Analogy</button>
+        <button class="edubot-chip" data-prompt="Explain this concept like I'm 5 years old">🧒 ELI5</button>
+        <button class="edubot-chip" data-prompt="Give me a quick practice follow-up question">❓ Quiz me</button>
+      </div>
+
+      <!-- Input Bar -->
+      <form class="edubot-input-form" id="edubot-form">
+        <input type="text" id="edubot-input" class="edubot-input" placeholder="Ask EduBot a question..." autocomplete="off" />
+        <button type="submit" class="btn btn-green btn-sm" style="padding: 8px 14px;">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Day 11: Keyboard Shortcuts -->
+  <div class="keyboard-overlay" id="keyboard-overlay" style="display:none;">
+    <div class="keyboard-overlay-content">
+      <div class="keyboard-overlay-header">
+        <h3 style="margin: 0; font-family: 'Google Sans', sans-serif; font-size: 1.1rem;">⌨️ Keyboard Shortcuts</h3>
+        <button class="keyboard-close-btn" id="keyboard-close-btn">&times;</button>
+      </div>
+      <div class="keyboard-shortcuts-list">
+        <div class="shortcut-row"><span class="key-badge">←</span> <span class="key-badge">→</span> Navigate cards</div>
+        <div class="shortcut-row"><span class="key-badge">Space</span> Flip card</div>
+        <div class="shortcut-row"><span class="key-badge">1</span> <span class="key-badge">2</span> <span class="key-badge">3</span> <span class="key-badge">4</span> Select MCQ option</div>
+        <div class="shortcut-row"><span class="key-badge">K</span> Rate Know it</div>
+        <div class="shortcut-row"><span class="key-badge">F</span> Rate Fuzzy</div>
+        <div class="shortcut-row"><span class="key-badge">D</span> Rate Don't know</div>
+        <div class="shortcut-row"><span class="key-badge">?</span> Show this help</div>
+        <div class="shortcut-row"><span class="key-badge">Esc</span> Close overlays</div>
+      </div>
+    </div>
   </div>
 
   <!-- Day 9: Canvas Confetti -->

@@ -543,10 +543,63 @@
     document.head.appendChild(style);
   }
 
+  // ============================================================
+  //  Day 11: Theme Switcher (Dark / Light / Auto)
+  // ============================================================
+  const THEME_KEY = 'ef_theme';
+  const THEMES = ['dark', 'light', 'auto'];
+  const THEME_ICONS = { dark: '🌙', light: '☀️', auto: '💻' };
+  const THEME_LABELS = { dark: 'Dark mode', light: 'Light mode', auto: 'System theme' };
+
+  function initThemeSwitcher() {
+    const saved = localStorage.getItem(THEME_KEY) || 'dark';
+    applyTheme(saved);
+
+    const btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const current = localStorage.getItem(THEME_KEY) || 'dark';
+        const nextIndex = (THEMES.indexOf(current) + 1) % THEMES.length;
+        const next = THEMES[nextIndex];
+        localStorage.setItem(THEME_KEY, next);
+        applyTheme(next);
+      });
+    }
+
+    // Listen for system theme changes when in auto mode
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+        if ((localStorage.getItem(THEME_KEY) || 'dark') === 'auto') {
+          applyTheme('auto');
+        }
+      });
+    }
+  }
+
+  function applyTheme(theme) {
+    let effective = theme;
+    if (theme === 'auto') {
+      effective = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+
+    document.documentElement.setAttribute('data-theme', effective);
+    localStorage.setItem(THEME_KEY, theme);
+
+    const btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = THEME_ICONS[theme] || '🌙';
+      btn.title = THEME_LABELS[theme] || 'Toggle theme';
+    }
+  }
+
+  // Expose for external use
+  window.EduTheme = { applyTheme, initThemeSwitcher };
+
   // ── Auto-init on DOM ready ────────────────────────────────────
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAuth);
+    document.addEventListener('DOMContentLoaded', () => { initAuth(); initThemeSwitcher(); });
   } else {
     initAuth();
+    initThemeSwitcher();
   }
 })();

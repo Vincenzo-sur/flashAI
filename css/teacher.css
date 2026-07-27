@@ -2451,3 +2451,269 @@
   box-shadow: 0 12px 30px rgba(0,0,0,0.4);
   border-color: var(--green-light);
 }
+
+/* ────────────────────────────────────────────
+   DAY 11 — AI ACTIONS, IMPORT/EXPORT & SHARE
+──────────────────────────────────────────── */
+.card-ai-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-light);
+  flex-wrap: wrap;
+}
+
+.btn-ai-action {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(30,142,62,0.1);
+  border: 1px solid rgba(52,168,83,0.3);
+  color: var(--green-light);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+.btn-ai-action:hover {
+  background: rgba(30,142,62,0.22);
+  transform: translateY(-1px);
+}
+
+.ai-explanation-box {
+  background: rgba(255,255,255,0.03);
+  border-left: 3px solid var(--yellow);
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  animation: fadeIn 0.3s ease;
+}
+
+.ai-report-card {
+  background: var(--bg-surface);
+  border: 1px solid rgba(52,168,83,0.3);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  animation: fadeIn 0.4s ease;
+}
+
+.ai-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ai-report-section {
+  margin-bottom: 14px;
+}
+.ai-report-section-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--yellow);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ============================================================
+   Day 11: Notification Center & Keyboard Shortcuts
+============================================================ */
+
+/* Notification Bell & Badge */
+.notification-bell {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background var(--transition);
+}
+.notification-bell:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ea4335;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 2px 5px;
+  min-width: 16px;
+  text-align: center;
+  transform: translate(25%, -25%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.notification-badge.bounce {
+  animation: badgeBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes badgeBounce {
+  0% { transform: translate(25%, -25%) scale(0.5); }
+  50% { transform: translate(25%, -25%) scale(1.2); }
+  100% { transform: translate(25%, -25%) scale(1); }
+}
+
+/* Notification Drawer */
+.notification-drawer-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  z-index: 9999;
+}
+.notification-drawer {
+  position: absolute;
+  top: 0; right: 0;
+  width: 360px;
+  height: 100%;
+  max-height: 100vh;
+  background: rgba(32, 33, 36, 0.95);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s ease-out;
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.notification-drawer-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.notification-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.notification-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notification-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+}
+.notification-item.unread {
+  border-left: 3px solid var(--green-light);
+  background: rgba(30,142,62,0.05);
+}
+.notification-item-icon {
+  font-size: 1.2rem;
+}
+.notification-item-content {
+  flex: 1;
+}
+.notification-item-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.notification-item-body {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.notification-item-time {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+/* Keyboard Overlay */
+.keyboard-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.keyboard-overlay-content {
+  background: rgba(32, 33, 36, 0.95);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease-out;
+}
+.keyboard-overlay-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.keyboard-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.keyboard-shortcuts-list {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.key-badge {
+  background: #3c4043;
+  color: #fff;
+  border: 1px solid #5f6368;
+  border-radius: 4px;
+  min-width: 32px;
+  text-align: center;
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 0 #202124;
+}
+.shortcut-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

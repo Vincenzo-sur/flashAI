@@ -424,3 +424,348 @@
   font-size: 0.72rem;
   font-weight: 600;
 }
+
+/* ────────────────────────────────────────────
+   DAY 11 — EDUBOT AI TUTOR DRAWER & FAB
+──────────────────────────────────────────── */
+.edubot-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 10px 18px;
+  border-radius: 30px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(52,168,83,0.3);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+.edubot-fab:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 32px rgba(52,168,83,0.35);
+}
+
+.edubot-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.edubot-drawer {
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.edubot-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+}
+
+.edubot-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.edubot-close-btn:hover { color: var(--text); }
+
+.edubot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edubot-msg {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.edubot-msg.assistant {
+  align-self: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-bottom-left-radius: 2px;
+}
+.edubot-msg.user {
+  align-self: flex-end;
+  background: rgba(30,142,62,0.2);
+  border: 1px solid rgba(52,168,83,0.3);
+  color: var(--text);
+  border-bottom-right-radius: 2px;
+}
+
+.edubot-quick-prompts {
+  padding: 10px 20px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.edubot-chip {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.edubot-chip:hover {
+  border-color: var(--green-light);
+  color: var(--green-light);
+}
+
+.edubot-input-form {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  background: var(--bg-card);
+}
+.edubot-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 0.84rem;
+}
+.edubot-input:focus {
+  outline: none;
+  border-color: var(--green-light);
+}
+
+/* ────────────────────────────────────────────
+   DAY 11 — Spaced Repetition Engine, Analytics & Keyboard
+   ──────────────────────────────────────────── */
+
+/* Due Badge */
+.due-badge {
+  background: rgba(251, 188, 4, 0.15);
+  color: var(--yellow);
+  border: 1px solid rgba(251, 188, 4, 0.4);
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  animation: pulse-badge 2s infinite;
+}
+@keyframes pulse-badge {
+  0% { box-shadow: 0 0 0 0 rgba(251, 188, 4, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(251, 188, 4, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 188, 4, 0); }
+}
+
+/* Analytics Dashboard */
+.student-analytics-header {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 10px 0 16px 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--green);
+  text-align: left;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+@media (max-width: 400px) {
+  .analytics-grid { grid-template-columns: 1fr; }
+}
+
+.analytics-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.analytics-card-title {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.mastery-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+}
+.mastery-bar-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+}
+.mastery-bar-track {
+  width: 60px;
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mastery-bar-fill {
+  height: 100%;
+  background: var(--green);
+}
+.mastery-bar-pct {
+  width: 28px;
+  text-align: right;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.streak-dots-wrap {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.streak-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.streak-dot.active {
+  background: var(--green);
+}
+
+.personal-best-value {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--yellow);
+  line-height: 1.1;
+  margin-top: auto;
+}
+.personal-best-sub {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Keyboard Overlay */
+.keyboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-overlay-content {
+  background: rgba(32, 33, 36, 0.85);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+  color: var(--text);
+}
+
+.keyboard-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.keyboard-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.keyboard-close-btn:hover {
+  color: var(--text);
+}
+
+.keyboard-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.key-badge {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text);
+  min-width: 20px;
+  text-align: center;
+  display: inline-block;
+}
+

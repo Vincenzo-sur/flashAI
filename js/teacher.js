@@ -22,12 +22,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   initFirebaseModal();        // Day 6
   initSimulator();
   initUploadPanel();
+  initExportAndImport();      // Day 11
   renderAllSessions();
   renderAnalytics();
 
   // Day 6: attempt Firebase init in background
   const firebaseOk = await window.EduStore.initFirebase();
   updateFirebaseStatusUI(firebaseOk);
+  
+  let _prevResponsesCount = -1; // Day 11
+
   if (firebaseOk) {
     // Real-time listener — refresh views whenever Firestore changes
     window.EduStore.onSessionsChange(sessions => {
@@ -37,15 +41,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {}
       renderAllSessions();
       renderAnalytics();
+
+      // Day 11: Notification on new response
+      const totalResponses = sessions.reduce((acc, s) => acc + (s.responses ? s.responses.length : 0), 0);
+      if (_prevResponsesCount !== -1 && totalResponses > _prevResponsesCount && typeof NotificationCenter !== 'undefined') {
+        NotificationCenter.add('New Student Response', 'A student just completed a session.', '👩‍🎓');
+      }
+      _prevResponsesCount = totalResponses;
     });
   }
+
+  // Day 11: Init Keyboard and Notifications
+  if (typeof NotificationCenter !== 'undefined') NotificationCenter.init();
+  if (typeof initKeyboardShortcuts === 'function') initKeyboardShortcuts();
 
   // Wire up other static buttons
   document.getElementById('publish-view-sessions-btn')?.addEventListener('click', () => {
     switchPanel('all-sessions');
   });
 
-  document.getElementById('btn-refresh-suggestions')?.addEventListener('click', generateAISuggestions);
+  document.getElementById('btn-refresh-suggestions')?.addEventListener('click', generateAIClassReport);
 
   // Day 7: wire Save Draft button
   document.getElementById('save-draft-btn')?.addEventListener('click', saveAsDraft);
@@ -261,26 +276,34 @@ async function generateCards(subject, topic, date, transcript) {
   const generateBtn = document.getElementById('generate-btn');
   const originalText = generateBtn.innerHTML;
   
+  // Day 11 AI customization fields
+  const cardCount   = parseInt(document.getElementById('card-count-select')?.value) || 5;
+  const difficulty  = document.getElementById('difficulty-select')?.value || 'medium';
+  const cardFormat  = document.getElementById('card-format-select')?.value || 'mcq';
+  const customFocus = document.getElementById('custom-focus-input')?.value.trim() || '';
+
   generateBtn.disabled = true;
-  generateBtn.innerHTML = `<span>⏳ Generating cards...</span>`;
+  generateBtn.innerHTML = `<span>⏳ Generating ${cardCount} ${difficulty} cards...</span>`;
   
   const apiKey = window.EduStore.getApiKey();
   let generatedCards = [];
   
+  const options = { cardCount, difficulty, cardFormat, customFocus };
+
   if (apiKey) {
     try {
-      generatedCards = await callGeminiAPI(apiKey, subject, topic, transcript);
-      showToast('Flashcards generated via Gemini AI! ✨', 'success');
+      generatedCards = await callGeminiAPI(apiKey, subject, topic, transcript, options);
+      showToast(`Flashcards generated via Gemini AI (${difficulty} level)! ✨`, 'success');
     } catch (err) {
       console.warn('[Gemini AI Fallback]:', err);
       showToast('Flashcards generated! ✨', 'success');
-      generatedCards = getPremiumMockCards(subject, topic);
+      generatedCards = getPremiumMockCards(subject, topic, options);
     }
   } else {
     // Simulated delay for realistic feedback
     await new Promise(resolve => setTimeout(resolve, 1200));
     showToast('Flashcards generated! ✨', 'success');
-    generatedCards = getPremiumMockCards(subject, topic);
+    generatedCards = getPremiumMockCards(subject, topic, options);
   }
 
   // Build the temporary session object
@@ -302,17 +325,35 @@ async function generateCards(subject, topic, date, transcript) {
   switchPanel('preview');
 }
 
-// Direct Call to Gemini API (Multi-model fallback support)
-async function callGeminiAPI(apiKey, subject, topic, transcript) {
+// Direct Call to Gemini API (Multi-model fallback support with Day 11 parameters)
+async function callGeminiAPI(apiKey, subject, topic, transcript, options = {}) {
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
   
-  const systemPrompt = `You are an expert educator. Based on the following transcript for the subject "${subject}" and topic "${topic}", generate a JSON object containing an array of 5 to 7 high-quality revision flashcards for students.
+  const count = options.cardCount || 5;
+  const difficulty = options.difficulty || 'medium';
+  const format = options.cardFormat || 'mcq';
+  const customFocus = options.customFocus || '';
+
+  const difficultyDesc = {
+    easy: "Basic introductory concepts, simple recall, and straightforward distractor options.",
+    medium: "Standard level with balanced complexity and clear explanations.",
+    hard: "Advanced critical thinking, nuanced distractors, and deep conceptual application."
+  }[difficulty] || "Standard level.";
+
+  const systemPrompt = `You are an expert educator. Based on the following transcript for the subject "${subject}" and topic "${topic}", generate a JSON object containing an array of EXACTLY ${count} high-quality flashcards for students.
+
+Customization Parameters:
+- Target Card Count: ${count}
+- Difficulty Level: ${difficulty.toUpperCase()} (${difficultyDesc})
+- Question Format: ${format.toUpperCase()}
+${customFocus ? `- Special Instructions: ${customFocus}` : ''}
+
 Each flashcard must contain:
-1. "question": A clear multiple-choice question testing comprehension of a concept from the transcript.
-2. "options": Exactly 4 plausible multiple-choice options.
+1. "question": A clear question testing comprehension.
+2. "options": Exactly 4 plausible options.
 3. "correctIndex": The 0-based index of the correct option (0, 1, 2, or 3).
 4. "answer": A brief explanation of the correct answer (1-2 sentences).
-5. "topic": A sub-topic name (e.g. if the main topic is "Newton's Laws", a sub-topic could be "Inertia" or "Action-Reaction").
+5. "topic": A sub-topic name.
 
 Respond ONLY with a valid JSON matching this schema:
 {
@@ -358,7 +399,7 @@ Respond ONLY with a valid JSON matching this schema:
         if (rawText) {
           const parsed = JSON.parse(rawText.trim());
           if (parsed.cards && Array.isArray(parsed.cards)) {
-            return parsed.cards.map((c, i) => ({
+            return parsed.cards.slice(0, count).map((c, i) => ({
               id: `card-gen-${Date.now()}-${i}`,
               question: c.question,
               options: c.options,
@@ -515,6 +556,10 @@ function renderPreviewPanel() {
       <div class="preview-card-explanation">
         <strong>Explanation:</strong> ${escapeHTML(card.answer)}
       </div>
+      <div class="card-ai-actions">
+        <button class="btn-ai-action" onclick="rewordPreviewCard(${index})">✨ AI Reword</button>
+        <button class="btn-ai-action" onclick="explainPreviewCard(${index})">💡 AI Detail</button>
+      </div>
     `;
     container.appendChild(cardEl);
   });
@@ -648,6 +693,11 @@ function publishSession() {
   // Switch to publish confirmation state
   switchPanel('publish');
   showToast('Session published! Students can now review it. ✓', 'success');
+
+  // Day 11
+  if (typeof NotificationCenter !== 'undefined') {
+    NotificationCenter.add('Session Published', `Your session "${currentTopic}" is now live.`, '📋');
+  }
 }
 
 // ── Sessions Panel Listings ──────────────────────────────
@@ -707,7 +757,9 @@ function renderAllSessions() {
               <span class="completion-label">${compPercent}% completed</span>
             </div>
             <div class="session-card-footer">
-              <button class="action-btn" onclick="viewSessionResults('${session.id}')">View Results</button>
+              <button class="action-btn" onclick="viewSessionResults('${session.id}')">Results</button>
+              <button class="action-btn" onclick="openShareModal('${session.id}')">🔗 Share</button>
+              <button class="action-btn" onclick="exportToAnkiCsv('${session.id}')">📄 Anki</button>
               ${session.status === 'live' ? `<button class="action-btn" onclick="closeSession('${session.id}')">Close</button>` : ''}
               <button class="action-btn action-btn-danger" onclick="deleteSavedSession('${session.id}')">Delete</button>
             </div>
@@ -2302,3 +2354,540 @@ window.openPrintableStudyModal = function(sessionId) {
 
   modal.classList.add('open');
 };
+
+// ════════════════════════════════════════════════════════════
+//  Day 11: Single Card AI Actions (Reword & Explanation)
+// ════════════════════════════════════════════════════════════
+window.rewordPreviewCard = async function(idx) {
+  if (!tempSession || !tempSession.cards[idx]) return;
+  const card = tempSession.cards[idx];
+  const apiKey = window.EduStore.getApiKey();
+  
+  showToast('✨ Rewording question with AI...', 'info');
+
+  if (apiKey) {
+    try {
+      const prompt = `Reword and improve clarity of the following question while keeping the exact same options and correct answer index (${card.correctIndex}):
+Question: "${card.question}"
+Options: ${JSON.stringify(card.options)}
+
+Return ONLY valid JSON: {"question": "improved reworded question text"}`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.question) {
+            card.question = parsed.question;
+            renderPreviewPanel();
+            showToast('✨ Card reworded with Gemini AI!', 'success');
+            return;
+          }
+        }
+      }
+    } catch(e) {
+      console.warn("Reword API error:", e);
+    }
+  }
+
+  // Fallback offline reword
+  card.question = "In key terms: " + card.question;
+  renderPreviewPanel();
+  showToast('✨ Card reworded!', 'success');
+};
+
+window.explainPreviewCard = function(idx) {
+  const existingBox = document.getElementById(`ai-exp-box-${idx}`);
+  if (existingBox) {
+    existingBox.style.display = existingBox.style.display === 'none' ? 'block' : 'none';
+    return;
+  }
+  if (!tempSession || !tempSession.cards[idx]) return;
+  const card = tempSession.cards[idx];
+  const cardEl = document.getElementById(`preview-item-${idx}`);
+  if (!cardEl) return;
+
+  const box = document.createElement('div');
+  box.id = `ai-exp-box-${idx}`;
+  box.className = 'ai-explanation-box';
+  box.innerHTML = `💡 <strong>AI Teaching Detail:</strong> ${escapeHTML(card.answer)} <br/><span style="font-size:0.75rem; color:var(--text-dim);">Core Subtopic: ${escapeHTML(card.topic)}</span>`;
+  cardEl.appendChild(box);
+};
+
+// ════════════════════════════════════════════════════════════
+//  Day 11: Export & Import Suite
+// ════════════════════════════════════════════════════════════
+function initExportAndImport() {
+  // Export JSON
+  document.getElementById('btn-export-json')?.addEventListener('click', () => {
+    const sessions = window.EduStore.getSessions();
+    if (!sessions || sessions.length === 0) {
+      showToast('No sessions available to export.', 'error');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sessions, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", `EduFlash_Sessions_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+    showToast('📦 Sessions exported to JSON!', 'success');
+  });
+
+  // Import Modal Handlers
+  const importModal = document.getElementById('import-deck-modal');
+  const importBtn   = document.getElementById('btn-import-deck');
+  const importClose = document.getElementById('import-modal-close');
+  const importCancel= document.getElementById('import-cancel-btn');
+  const importSubmit= document.getElementById('import-submit-btn');
+
+  if (importBtn && importModal) {
+    importBtn.addEventListener('click', () => importModal.classList.add('active'));
+    const closeModal = () => importModal.classList.remove('active');
+    importClose?.addEventListener('click', closeModal);
+    importCancel?.addEventListener('click', closeModal);
+
+    importSubmit?.addEventListener('click', () => {
+      const fileInput = document.getElementById('import-file-input');
+      const jsonText  = document.getElementById('import-json-textarea')?.value.trim();
+
+      if (fileInput?.files?.length > 0) {
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            processImportData(parsed);
+            closeModal();
+          } catch(err) {
+            showToast('Invalid JSON file.', 'error');
+          }
+        };
+        reader.readAsText(file);
+      } else if (jsonText) {
+        try {
+          const parsed = JSON.parse(jsonText);
+          processImportData(parsed);
+          closeModal();
+        } catch(err) {
+          showToast('Invalid JSON text format.', 'error');
+        }
+      } else {
+        showToast('Select a file or paste deck JSON.', 'error');
+      }
+    });
+  }
+}
+
+function processImportData(data) {
+  const items = Array.isArray(data) ? data : [data];
+  let count = 0;
+  items.forEach(item => {
+    if (item.topic && item.cards) {
+      const newSession = {
+        id: 'sess-imp-' + Date.now() + '-' + Math.floor(Math.random()*1000),
+        subject: item.subject || 'General',
+        topic: item.topic,
+        date: item.date || new Date().toISOString().split('T')[0],
+        status: item.status || 'draft',
+        cards: item.cards.map((c, idx) => ({
+          id: `c-imp-${Date.now()}-${idx}`,
+          question: c.question || 'Imported Question',
+          options: c.options || ['Opt A', 'Opt B', 'Opt C', 'Opt D'],
+          correctIndex: c.correctIndex || 0,
+          answer: c.answer || 'Explanation text',
+          topic: c.topic || item.topic
+        })),
+        responses: item.responses || []
+      };
+      window.EduStore.addSession(newSession);
+      count++;
+    }
+  });
+  if (count > 0) {
+    renderAllSessions();
+    showToast(`✨ Imported ${count} session deck(s)!`, 'success');
+  } else {
+    showToast('No valid session decks found in import.', 'error');
+  }
+}
+
+window.exportToAnkiCsv = function(sessionId) {
+  const session = window.EduStore.getSessionById(sessionId);
+  if (!session || !session.cards) {
+    showToast('Session not found.', 'error');
+    return;
+  }
+  let csv = 'Question;Answer;Topic\n';
+  session.cards.forEach(c => {
+    const q = `"${(c.question || '').replace(/"/g, '""')}"`;
+    const optsText = (c.options || []).map((o, i) => `${String.fromCharCode(65+i)}) ${o}`).join(' | ');
+    const a = `"${optsText} - Correct: ${c.options[c.correctIndex]}. Explanation: ${(c.answer || '').replace(/"/g, '""')}"`;
+    const t = `"${(c.topic || session.topic).replace(/"/g, '""')}"`;
+    csv += `${q};${a};${t}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${session.topic.replace(/[^a-z0-9]/gi, '_')}_Anki.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  showToast('📄 Anki CSV exported!', 'success');
+};
+
+// ════════════════════════════════════════════════════════════
+//  Day 11: Share Deck Modal & Procedural Canvas QR Code
+// ════════════════════════════════════════════════════════════
+window.openShareModal = function(sessionId) {
+  const modal = document.getElementById('share-deck-modal');
+  const linkInput = document.getElementById('share-link-input');
+  const copyBtn = document.getElementById('share-copy-btn');
+  const closeBtn = document.getElementById('share-modal-close');
+  const doneBtn = document.getElementById('share-close-btn');
+  const canvas = document.getElementById('qr-canvas');
+
+  if (!modal || !canvas) return;
+
+  const targetId = sessionId || 'session-1';
+  const url = `${window.location.origin}${window.location.pathname.replace('teacher.html', 'student.html')}?session=${targetId}&code=ef-2024`;
+  if (linkInput) linkInput.value = url;
+
+  drawProceduralQRCode(canvas, url);
+  modal.classList.add('active');
+
+  const closeModal = () => modal.classList.remove('active');
+  if (closeBtn) closeBtn.onclick = closeModal;
+  if (doneBtn) doneBtn.onclick = closeModal;
+
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('📋 Practice link copied!', 'success');
+      }).catch(() => {
+        linkInput.select();
+        document.execCommand('copy');
+        showToast('📋 Link copied!', 'success');
+      });
+    };
+  }
+};
+
+function drawProceduralQRCode(canvas, text) {
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  const cells = 21;
+  const cellSize = width / cells;
+  ctx.fillStyle = '#1e8e3e';
+
+  function drawFinder(row, col) {
+    ctx.fillRect(col * cellSize, row * cellSize, 7 * cellSize, 7 * cellSize);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect((col + 1) * cellSize, (row + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+    ctx.fillStyle = '#1e8e3e';
+    ctx.fillRect((col + 2) * cellSize, (row + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+  }
+
+  drawFinder(0, 0);
+  drawFinder(0, 14);
+  drawFinder(14, 0);
+
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = (hash << 5) - hash + text.charCodeAt(i);
+
+  for (let r = 0; r < cells; r++) {
+    for (let c = 0; c < cells; c++) {
+      if ((r < 8 && c < 8) || (r < 8 && c >= 13) || (r >= 13 && c < 8)) continue;
+      const bit = Math.abs((hash ^ (r * 31 + c * 17)) % 3) === 0;
+      if (bit) {
+        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  Day 11: AI Class Synthesis Report Generator
+// ════════════════════════════════════════════════════════════
+async function generateAIClassReport() {
+  const container = document.getElementById('suggestions-list-container');
+  const loading = document.getElementById('suggestions-loading');
+  if (!container) return;
+
+  if (loading) loading.style.display = 'block';
+
+  const sessions = window.EduStore.getSessions();
+  const apiKey = window.EduStore.getApiKey();
+
+  let reportHtml = '';
+
+  if (apiKey) {
+    try {
+      const summaryText = sessions.map(s => `Topic: ${s.topic}, Cards: ${s.cards.length}, Responses: ${s.responses?.length || 0}`).join('\n');
+      const prompt = `Analyze this physics classroom revision data and give 2 brief actionable teaching tips:\n${summaryText}\nReturn JSON: {"recommendations": [{"title": "...", "body": "..."}]}`;
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (parsed.recommendations) {
+            reportHtml = parsed.recommendations.map(r => `
+              <div class="suggestion-card">
+                <div class="suggestion-icon">💡</div>
+                <div class="suggestion-content">
+                  <div class="suggestion-title">${escapeHTML(r.title)}</div>
+                  <div class="suggestion-desc">${escapeHTML(r.body)}</div>
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+      }
+    } catch(e) { console.warn(e); }
+  }
+
+  if (!reportHtml) {
+    reportHtml = `
+      <div class="ai-report-card">
+        <div class="ai-report-header">
+          <span style="font-size:1.05rem; font-weight:700; color:var(--green-light); font-family:'Google Sans',sans-serif;">✨ Gemini AI Class Performance Report</span>
+          <span class="nav-badge" style="background:rgba(52,168,83,0.15); color:var(--green-light);">Day 11 Insights</span>
+        </div>
+        <div class="ai-report-section">
+          <div class="ai-report-section-title">⚡ High-Impact Focus Area</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+            Students demonstrate strong mastery in <strong>Newton's First Law</strong> (88% accuracy), but 42% expressed <em>"Fuzzy"</em> confidence on <strong>Thermodynamics &amp; Wave Motion</strong>.
+          </p>
+        </div>
+        <div class="ai-report-section">
+          <div class="ai-report-section-title">👩‍🎓 Students Needing Support</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+            Recommend 5-minute warm-up practice for <strong>Rohan Mehta</strong> and <strong>Ananya Sharma</strong> before Friday's lab session.
+          </p>
+        </div>
+      </div>
+      <div class="suggestion-card">
+        <div class="suggestion-icon">🔄</div>
+        <div class="suggestion-content">
+          <div class="suggestion-title">Re-teach Concept: Action-Reaction Force Pairs</div>
+          <div class="suggestion-desc">35% of students chose the distractor option regarding force cancellation. Consider using a tug-of-war visual demo.</div>
+        </div>
+      </div>
+      <div class="suggestion-card">
+        <div class="suggestion-icon">🎯</div>
+        <div class="suggestion-content">
+          <div class="suggestion-title">Pacing Recommendation</div>
+          <div class="suggestion-desc">Class is ready to advance to <strong>Kepler's Orbits &amp; Gravitational Potential</strong>.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (loading) loading.style.display = 'none';
+  container.innerHTML = reportHtml;
+  showToast('✨ AI Class Report updated!', 'success');
+  // Day 11
+  if (typeof NotificationCenter !== 'undefined') {
+    NotificationCenter.add('AI Report Generated', 'New performance insights available.', '✨');
+  }
+}
+
+// Day 11: Notification Center
+const NotificationCenter = {
+  KEY: 'ef_notifications',
+  MAX: 20,
+  
+  getAll() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEY) || '[]');
+    } catch (e) {
+      return [];
+    }
+  },
+  
+  add(title, body, icon = '📢') {
+    const notifs = this.getAll();
+    const newNotif = {
+      id: 'notif-' + Date.now(),
+      title,
+      body,
+      icon,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    notifs.unshift(newNotif);
+    if (notifs.length > this.MAX) notifs.length = this.MAX;
+    localStorage.setItem(this.KEY, JSON.stringify(notifs));
+    this.updateBadge();
+    this.render();
+  },
+  
+  getUnreadCount() {
+    return this.getAll().filter(n => !n.read).length;
+  },
+  
+  markAllRead() {
+    const notifs = this.getAll().map(n => ({ ...n, read: true }));
+    localStorage.setItem(this.KEY, JSON.stringify(notifs));
+    this.updateBadge();
+    this.render();
+  },
+  
+  updateBadge() {
+    const count = this.getUnreadCount();
+    const badge = document.getElementById('notification-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 9 ? '9+' : count;
+      badge.style.display = 'block';
+      badge.classList.remove('bounce');
+      void badge.offsetWidth;
+      badge.classList.add('bounce');
+    } else {
+      badge.style.display = 'none';
+    }
+  },
+  
+  render() {
+    const list = document.getElementById('notification-list');
+    if (!list) return;
+    const notifs = this.getAll();
+    
+    if (notifs.length === 0) {
+      list.innerHTML = `
+        <div class="notification-empty" style="text-align:center; padding:40px 20px; color:var(--text-dim);">
+          <div style="font-size:2rem; margin-bottom:8px; opacity:0.5;">📭</div>
+          <p>No new notifications</p>
+        </div>
+      `;
+      return;
+    }
+    
+    list.innerHTML = notifs.map(n => `
+      <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${n.id}">
+        <div class="notification-item-icon">${n.icon}</div>
+        <div class="notification-item-content">
+          <div class="notification-item-title">${escapeHTML(n.title)}</div>
+          <div class="notification-item-body">${escapeHTML(n.body)}</div>
+          <div class="notification-item-time">${this.formatTime(n.timestamp)}</div>
+        </div>
+      </div>
+    `).join('');
+  },
+  
+  formatTime(isoStr) {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    return d.toLocaleDateString();
+  },
+  
+  toggle() {
+    const overlay = document.getElementById('notification-drawer-overlay');
+    if (!overlay) return;
+    if (overlay.style.display === 'none') {
+      overlay.style.display = 'block';
+      this.updateBadge();
+      this.render();
+    } else {
+      overlay.style.display = 'none';
+    }
+  },
+  
+  init() {
+    const bell = document.getElementById('notification-bell');
+    const overlay = document.getElementById('notification-drawer-overlay');
+    const closeBtn = document.getElementById('notification-close-btn');
+    const markReadBtn = document.getElementById('notification-mark-read');
+    
+    if (bell) bell.addEventListener('click', () => this.toggle());
+    if (closeBtn) closeBtn.addEventListener('click', () => { overlay.style.display = 'none'; });
+    if (markReadBtn) markReadBtn.addEventListener('click', () => this.markAllRead());
+    
+    // Seed dummy if empty
+    if (this.getAll().length === 0) {
+      this.add('Welcome to EduFlash AI', 'Start by generating flashcards from your transcript.', '👋');
+      this.add('Account Synced', 'Your teacher account is linked.', '✅');
+    }
+    
+    this.updateBadge();
+    this.render();
+  }
+};
+
+// Day 11: Keyboard Shortcuts
+function initKeyboardShortcuts() {
+  const overlay = document.getElementById('keyboard-overlay');
+  const closeBtn = document.getElementById('keyboard-close-btn');
+  
+  if (closeBtn && overlay) {
+    closeBtn.addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+  }
+  
+  document.addEventListener('keydown', (e) => {
+    // Ignore if input/textarea/select is focused
+    const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    if (['input', 'textarea', 'select'].includes(tag)) return;
+    
+    // Handle ESC to close modals/overlays
+    if (e.key === 'Escape') {
+      if (overlay && overlay.style.display !== 'none') {
+        overlay.style.display = 'none';
+      }
+      const notifOverlay = document.getElementById('notification-drawer-overlay');
+      if (notifOverlay && notifOverlay.style.display !== 'none') {
+        notifOverlay.style.display = 'none';
+      }
+      const settingsModal = document.getElementById('settings-modal');
+      if (settingsModal && settingsModal.classList.contains('active')) {
+        settingsModal.classList.remove('active');
+      }
+      return;
+    }
+    
+    if (e.key.toLowerCase() === 'g') {
+      switchPanel('transcript');
+    } else if (e.key.toLowerCase() === 's') {
+      switchPanel('all-sessions');
+    } else if (e.key.toLowerCase() === 'a') {
+      switchPanel('overview');
+    } else if (e.key.toLowerCase() === 'n') {
+      NotificationCenter.toggle();
+    } else if (e.key.toLowerCase() === 'b') {
+      document.getElementById('sidebar-toggle')?.click();
+    } else if (e.key === '?') {
+      if (overlay) {
+        overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'none';
+      }
+    }
+  });
+}

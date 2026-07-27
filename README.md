@@ -58,6 +58,8 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Gamified Student Practice Hub & Audio Accessibility** — 3 study modes (Standard, ⚡ Speed Sprint 15s timer, 🧠 Smart Missed Cards), Web Speech TTS read-aloud, Web Audio synth FX, and canvas particle confetti celebration (Day 9)
 - [x] **Printable PDF Study Sheet Generator** — 1-click 2-column study guide grid export with togglable answer key (Day 9)
 - [x] **Day 10 UI Enhancements & Issues Fixes** — Centered Paste Transcript & Upload Notes layouts, 3D overlapping stacked card decks for Sessions and Drafts, Web Speech TTS read button fix, and Speed Sprint card percentage & 15s countdown timer fix (Day 10)
+- [x] **Day 11: AI Deck Customization, Interactive AI Tutor (EduBot) & Export/Import Suite** — AI parameters grid (Difficulty, Card Count, Format, Custom Focus), Single Card AI actions (✨ Reword & 💡 Detail), EduBot AI Tutor drawer on Student page with context-aware helper chips, Deck Export & Import (JSON, Anki CSV), Procedural QR Code & Share modal, and AI Class Synthesis Report (Day 11)
+- [x] **Day 11: Spaced Repetition, Student Analytics, Theme Switcher, Keyboard Shortcuts & Notifications** — Leitner box spaced repetition engine, student personal analytics dashboard with sparkline charts and study streaks, Dark/Light/Auto theme switcher, full keyboard navigation with `?` help overlay, and teacher notification center with bell badge (Day 11)
 
 ---
 
@@ -69,7 +71,7 @@ Teacher dashboard → weak topics vs strong topics
 | AI | Google Gemini API (`gemini-1.5-flash`) |
 | Auth | Google OAuth 2.0 (mock flow + GSI hook) |
 | Database | Firebase Firestore *(opt-in, Day 6)* |
-| Classroom | Google Classroom Add-ons API *(planned)* |
+| Classroom | Google Classroom Add-ons API *(Day 8)* |
 | Charts | Chart.js 4 *(Day 6)* |
 | Storage | `localStorage` → Firebase Firestore |
 
@@ -85,14 +87,14 @@ flashAI/
 ├── css/
 │   ├── global.css    # Design tokens, buttons, base styles
 │   ├── landing.css   # Landing page layout and components
-│   ├── student.css   # Student reviewer styles
-│   └── teacher.css   # Teacher dashboard styles + Day 6 charts
+│   ├── student.css   # Student reviewer styles + EduBot drawer
+│   └── teacher.css   # Teacher dashboard styles + Day 6 charts + Day 11 AI customizer
 └── js/
     ├── firebase-store.js  # Firebase Firestore adapter (Day 6)
     ├── store.js           # Unified data store (local + Firebase routing)
     ├── auth.js            # Google OAuth / mock sign-in
-    ├── teacher.js         # Teacher dashboard + Chart.js (Day 6)
-    ├── student.js         # Student flashcard reviewer
+    ├── teacher.js         # Teacher dashboard + Chart.js + Day 11 AI Actions & Exporter
+    ├── student.js         # Student flashcard reviewer + EduBot AI Tutor
     └── landing.js         # Landing page flashcard demo
 ```
 
@@ -163,12 +165,24 @@ cd flashAI
   - Web Audio API procedural synthesizer sound chimes for correct choices, wrong choices, card flipping, and review completion.
   - Canvas particle confetti celebration and achievement badges (*Speed Demon ⚡*, *Mastery 🎯*, *Streak Master 🔥*).
   - 1-Click Printable PDF Study Sheet Generator with 2-column paper layout and answer key hide/show toggle.
-- [x] **Day 10: Centered Creation Panels, 3D Overlapping Card Decks & Bug Resolution (Current)**
+- [x] **Day 10: Centered Creation Panels, 3D Overlapping Card Decks & Bug Resolution**
   - Web Speech API `TTSManager` & `SoundFX` helper definitions resolving the Read button speech issue.
   - Dynamic card progress calculator (`Card X of Y`, `${Math.round(X/Y * 100)}%`) resolving the 2-card 20% / 5-card count display bug.
   - 15-second Speed Sprint countdown timer interval logic with animated draining progress bar.
   - Center-aligned layout for Paste Transcript & Upload Notes creation panels (`#panel-transcript`, `#panel-upload`).
   - 3D Overlapping Stacked Card Format (`.overlapping-card-deck`) with background layers and hover fan-out keyframe animations for Sessions and Drafts lists.
+- [x] **Day 11: AI Deck Customization, Interactive AI Tutor (EduBot) & Export/Import Suite**
+  - AI Flashcard Customization Controls: Card Count (3, 5, 8, 10), Difficulty Level (Easy, Medium, Hard), Question Format (MCQ, Fill-in-the-blank, True/False, Key Concepts), and Custom Focus Instructions.
+  - Single Card AI Reword (`✨ AI Reword`) & AI Explanation Detail (`💡 AI Detail`) in Preview panel.
+  - EduBot AI Tutor: Sliding drawer AI tutor on student page with current card context and quick helper prompt chips (*Step-by-step*, *Analogy*, *ELI5*, *Practice Quiz*).
+  - Deck Portability Suite: One-click Anki CSV export, JSON export/import modal, and direct Share deck modal with procedural Canvas QR Code.
+  - AI Class Report: Gemini-driven classroom performance synthesis in Analytics.
+- [x] **Day 11: Spaced Repetition, Student Analytics, Theme Switcher, Keyboard Shortcuts & Notifications (Current)**
+  - 🧠 Leitner box spaced repetition engine with 5-box interval progression (1d → 3d → 7d → 14d → 30d) and due-card badges.
+  - 📊 Student personal analytics dashboard: Canvas sparkline accuracy trend, 7-day study streak heat dots, topic mastery progress bars, personal best tracking.
+  - 🌗 Dark / Light / Auto theme switcher across all pages with smooth CSS transitions and system `prefers-color-scheme` support.
+  - ⌨️ Full keyboard shortcuts (`← → Space 1-4 K/F/D ? Esc`) with glassmorphism `?` help overlay on both student and teacher dashboards.
+  - 🔔 Teacher notification center with bell badge, slide-in drawer, timestamped events, and mark-all-read.
 
 ---
 

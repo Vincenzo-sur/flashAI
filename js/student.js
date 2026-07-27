@@ -10,6 +10,67 @@ let selectedStudyMode = 'standard';
 let speedTimerInterval = null;
 let speedSecondsLeft = 15;
 
+// ── Day 11: Spaced Repetition Engine ─────────────────────────
+const SpacedRepetitionEngine = {
+  getStore() {
+    return JSON.parse(localStorage.getItem('ef_spaced_data') || '{}');
+  },
+  saveStore(store) {
+    localStorage.setItem('ef_spaced_data', JSON.stringify(store));
+  },
+  getDueCards(sessionId, cards) {
+    const store = this.getStore();
+    const now = new Date().getTime();
+    
+    const scoredCards = cards.map(c => {
+      const key = `${sessionId}_${c.id}`;
+      const data = store[key] || { box: 1, nextReview: new Date(now - 1000).toISOString(), lastReview: null, reviewCount: 0 };
+      const dueTime = new Date(data.nextReview).getTime();
+      return { card: c, data, dueTime, isDue: dueTime <= now };
+    });
+    
+    const dueCards = scoredCards.filter(sc => sc.isDue).sort((a, b) => a.data.box - b.data.box);
+    if (dueCards.length === 0) return cards;
+    return dueCards.map(sc => sc.card);
+  },
+  updateCard(sessionId, cardId, rating) {
+    const store = this.getStore();
+    const key = `${sessionId}_${cardId}`;
+    const data = store[key] || { box: 1, nextReview: new Date().toISOString(), lastReview: null, reviewCount: 0 };
+    
+    if (rating === 'know') data.box = Math.min(5, data.box + 1);
+    else if (rating === 'nope') data.box = 1;
+    
+    const intervals = { 1: 1, 2: 3, 3: 7, 4: 14, 5: 30 };
+    const daysToAdd = intervals[data.box] || 1;
+    
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + daysToAdd);
+    
+    data.nextReview = nextDate.toISOString();
+    data.lastReview = new Date().toISOString();
+    data.reviewCount++;
+    
+    store[key] = data;
+    this.saveStore(store);
+  },
+  getDueCount(sessionId, cards) {
+    const store = this.getStore();
+    const now = new Date().getTime();
+    let count = 0;
+    cards.forEach(c => {
+      const key = `${sessionId}_${c.id}`;
+      if (store[key]) {
+        const dueTime = new Date(store[key].nextReview).getTime();
+        if (dueTime <= now) count++;
+      } else {
+        count++; // never reviewed = due
+      }
+    });
+    return count;
+  }
+};
+
 // ── Web Speech API Text-to-Speech Helper ─────────────────────
 const TTSManager = {
   speak(text) {
@@ -83,6 +144,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initStudentEntry();
   initReviewControls();
   checkUrlParams();
+  initEduBotTutor(); // Day 11
+  initKeyboardShortcuts(); // Day 11
 });
 
 // ── Check URL Parameters for Direct Links (Day 8) ────────────
@@ -180,6 +243,14 @@ function initStudentEntry() {
         option.classList.add('selected');
         selectedSessionId = sess.id;
         startBtn.disabled = false;
+        
+        // Day 11: update due badge
+        const dueBadge = document.getElementById('due-cards-badge');
+        if (dueBadge) {
+          const dueCount = SpacedRepetitionEngine.getDueCount(sess.id, sess.cards);
+          dueBadge.textContent = `${dueCount} card${dueCount !== 1 ? 's' : ''} due`;
+          dueBadge.style.display = 'inline-block';
+        }
       });
 
       optionsDiv.appendChild(option);
@@ -213,6 +284,9 @@ function startReview(session) {
     if (missedCardIds.size > 0) {
       currentSession.cards = currentSession.cards.filter(c => missedCardIds.has(c.id));
     }
+  } else if (selectedStudyMode === 'spaced') {
+    // Day 11: Spaced Repetition Mode
+    currentSession.cards = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
   }
 
   currentCardIndex = 0;
@@ -221,6 +295,8 @@ function startReview(session) {
   // Transition layouts
   document.getElementById('entry-card').style.display = 'none';
   document.getElementById('review-container').classList.add('visible');
+  const fab = document.getElementById('edubot-fab');
+  if (fab) fab.style.display = 'flex';
 
   renderCard();
 }
@@ -442,6 +518,11 @@ function handleSelfRating(ratingType) {
 
   // Enable Next button
   document.getElementById('review-next-btn').disabled = false;
+  
+  // Day 11: Save to Spaced Repetition Engine
+  if (currentSession) {
+    SpacedRepetitionEngine.updateCard(currentSession.id, currentSession.cards[currentCardIndex].id, ratingType);
+  }
 }
 
 // ── Nav Controls Setup ──────────────────────────────────────
@@ -508,6 +589,9 @@ async function finishReview() {
   else if (accuracy < 75) accEl.style.color = 'var(--yellow)';
   else                    accEl.style.color = 'var(--green-light)';
 
+  // Day 11: Analytics Dashboard
+  saveAndRenderAnalytics(currentSession.id, accuracy, sessionAnswers, currentSession.cards);
+
   // Day 6: show sync status, then submit (async)
   const syncEl = document.getElementById('sync-status');
   if (syncEl) {
@@ -553,3 +637,328 @@ function escapeHTML(str) {
     }[tag] || tag)
   );
 }
+
+// ════════════════════════════════════════════════════════════
+//  Day 11: EduBot AI Tutor Drawer Logic
+// ════════════════════════════════════════════════════════════
+function initEduBotTutor() {
+  const fab        = document.getElementById('edubot-fab');
+  const overlay    = document.getElementById('edubot-drawer-overlay');
+  const closeBtn   = document.getElementById('edubot-close-btn');
+  const form       = document.getElementById('edubot-form');
+  const input      = document.getElementById('edubot-input');
+  const topicBadge = document.getElementById('edubot-topic-badge');
+
+  if (!fab || !overlay) return;
+
+  const openDrawer = () => {
+    overlay.style.display = 'flex';
+    if (currentSession && currentSession.cards && currentSession.cards[currentCardIndex]) {
+      const card = currentSession.cards[currentCardIndex];
+      if (topicBadge) topicBadge.textContent = `Topic: ${card.topic || currentSession.topic}`;
+    }
+  };
+
+  const closeDrawer = () => {
+    overlay.style.display = 'none';
+  };
+
+  fab.addEventListener('click', openDrawer);
+  closeBtn?.addEventListener('click', closeDrawer);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeDrawer();
+  });
+
+  // Quick action chip buttons
+  document.querySelectorAll('.edubot-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const promptText = chip.dataset.prompt;
+      if (promptText) {
+        sendEduBotQuery(promptText);
+      }
+    });
+  });
+
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const query = input.value.trim();
+    if (!query) return;
+    input.value = '';
+    sendEduBotQuery(query);
+  });
+}
+
+async function sendEduBotQuery(userQuery) {
+  const messagesContainer = document.getElementById('edubot-messages');
+  if (!messagesContainer) return;
+
+  // Render user bubble
+  const userMsgEl = document.createElement('div');
+  userMsgEl.className = 'edubot-msg user';
+  userMsgEl.textContent = userQuery;
+  messagesContainer.appendChild(userMsgEl);
+
+  // Render bot thinking bubble
+  const botMsgEl = document.createElement('div');
+  botMsgEl.className = 'edubot-msg assistant';
+  botMsgEl.innerHTML = `<span>⏳ EduBot is thinking...</span>`;
+  messagesContainer.appendChild(botMsgEl);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  const activeCard = (currentSession && currentSession.cards) ? currentSession.cards[currentCardIndex] : null;
+  const cardContext = activeCard ? `
+Card Question: "${activeCard.question}"
+Options: ${JSON.stringify(activeCard.options)}
+Correct Answer: "${activeCard.options[activeCard.correctIndex]}"
+Explanation: "${activeCard.answer}"
+Subtopic: "${activeCard.topic}"
+` : 'General revision session.';
+
+  const apiKey = window.EduStore.getApiKey();
+
+  if (apiKey && activeCard) {
+    try {
+      const systemPrompt = `You are EduBot, an encouraging and expert AI physics tutor for students.
+Current flashcard context:
+${cardContext}
+
+Answer the student's question clearly, concisely (2-3 sentences), and with high clarity.`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\nStudent question: " + userQuery }] }] })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          botMsgEl.innerHTML = text.replace(/\n/g, '<br/>');
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          return;
+        }
+      }
+    } catch(e) {
+      console.warn("EduBot API error:", e);
+    }
+  }
+
+  // Smart offline tutor responses
+  await new Promise(r => setTimeout(r, 500));
+  let answerText = "";
+  const lower = userQuery.toLowerCase();
+
+  if (lower.includes('step-by-step') || lower.includes('step')) {
+    answerText = `💡 <strong>Step-by-step breakdown:</strong><br/>
+1. Read the core physics law in the question.<br/>
+2. Option <strong>${String.fromCharCode(65 + (activeCard ? activeCard.correctIndex : 0))}</strong> directly satisfies this principle.<br/>
+3. The other options introduce common distractors.`;
+  } else if (lower.includes('analogy') || lower.includes('real-world')) {
+    answerText = `🌍 <strong>Real-world analogy:</strong><br/>
+Imagine riding a bicycle on a smooth ice rink: once you get moving, you keep coasting effortlessly because there is almost no friction force opposing your inertia!`;
+  } else if (lower.includes('5') || lower.includes('eli5')) {
+    answerText = `🧒 <strong>Simplified:</strong><br/>
+Things like to stay the way they are! A quiet kitten stays sleeping until someone stirs it, and a sliding toy keeps sliding until something pushes back!`;
+  } else if (lower.includes('quiz') || lower.includes('follow-up') || lower.includes('practice')) {
+    answerText = `❓ <strong>Quick follow-up quiz:</strong><br/>
+If you push a heavy box on a frictionless surface in space, will it speed up, slow down, or keep moving at constant speed after you let go?`;
+  } else {
+    answerText = `🤖 Great question! Regarding <strong>${activeCard ? activeCard.topic : 'this topic'}</strong>, option <strong>${activeCard ? String.fromCharCode(65 + activeCard.correctIndex) : 'A'}</strong> is correct because ${activeCard ? activeCard.answer : 'it directly answers the prompt.'}`;
+  }
+
+  botMsgEl.innerHTML = answerText;
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// ════════════════════════════════════════════════════════════
+//  Day 11: Analytics & Keyboard Shortcuts
+// ════════════════════════════════════════════════════════════
+function saveAndRenderAnalytics(sessionId, accuracy, answers, cards) {
+  let history = JSON.parse(localStorage.getItem('ef_review_history') || '[]');
+  
+  let topicScores = {};
+  answers.forEach(ans => {
+    if (!ans) return;
+    const card = cards.find(c => c.id === ans.cardId);
+    if (!card) return;
+    const topic = card.topic || 'General';
+    if (!topicScores[topic]) topicScores[topic] = { correct: 0, total: 0 };
+    topicScores[topic].total++;
+    if (ans.isCorrect) topicScores[topic].correct++;
+  });
+  
+  const record = {
+    sessionId,
+    accuracy,
+    date: new Date().toISOString(),
+    topicScores
+  };
+  history.push(record);
+  localStorage.setItem('ef_review_history', JSON.stringify(history));
+  
+  renderStudentAnalytics(history);
+}
+
+function renderStudentAnalytics(history) {
+  const container = document.getElementById('student-analytics');
+  if (container) container.style.display = 'block';
+  
+  // Trend Sparkline
+  const accHistory = history.map(h => h.accuracy);
+  drawSparkline('sparkline-canvas', accHistory);
+  
+  // Streak
+  const today = new Date().setHours(0,0,0,0);
+  let streakCount = [...new Set(history.map(h => new Date(h.date).setHours(0,0,0,0)))].length;
+  let heatDotsHtml = '';
+  for(let i=6; i>=0; i--) {
+    let d = new Date(today - i * 86400000);
+    let active = history.some(h => new Date(h.date).setHours(0,0,0,0) === d.getTime());
+    heatDotsHtml += `<div class="streak-dot ${active ? 'active' : ''}"></div>`;
+  }
+  
+  const streakEl = document.getElementById('streak-display');
+  if (streakEl) {
+    streakEl.innerHTML = `
+      <div style="font-size:1.4rem; font-weight:700; color:var(--text);">${streakCount} Days</div>
+      <div class="streak-dots-wrap">${heatDotsHtml}</div>
+    `;
+  }
+  
+  // Topic Mastery
+  let aggTopics = {};
+  history.forEach(h => {
+    Object.keys(h.topicScores || {}).forEach(t => {
+      if(!aggTopics[t]) aggTopics[t] = { correct:0, total:0 };
+      aggTopics[t].correct += h.topicScores[t].correct;
+      aggTopics[t].total += h.topicScores[t].total;
+    });
+  });
+  
+  let masteryHtml = '';
+  Object.keys(aggTopics).slice(0, 3).forEach(t => {
+    let pct = Math.round((aggTopics[t].correct / aggTopics[t].total) * 100);
+    masteryHtml += `
+      <div class="mastery-bar">
+        <div class="mastery-bar-label">${escapeHTML(t)}</div>
+        <div class="mastery-bar-track"><div class="mastery-bar-fill" style="width:${pct}%"></div></div>
+        <div class="mastery-bar-pct">${pct}%</div>
+      </div>
+    `;
+  });
+  if(!masteryHtml) masteryHtml = '<div style="font-size:0.75rem; color:var(--text-dim);">Not enough data</div>';
+  
+  const masteryEl = document.getElementById('mastery-bars');
+  if (masteryEl) masteryEl.innerHTML = masteryHtml;
+  
+  // Personal Best
+  const bestAcc = Math.max(...history.map(h => h.accuracy));
+  const latestAcc = history[history.length - 1].accuracy;
+  const bestEl = document.getElementById('personal-best-display');
+  if (bestEl) {
+    bestEl.innerHTML = `
+      <div class="personal-best-value">${bestAcc}%</div>
+      <div class="personal-best-sub">${latestAcc >= bestAcc && history.length > 1 ? '🎉 New Record!' : 'All-time high score'}</div>
+    `;
+  }
+}
+
+function drawSparkline(canvasId, dataPoints) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx.clearRect(0,0,w,h);
+  if(dataPoints.length < 2) {
+    ctx.fillStyle = '#9aa0a6';
+    ctx.font = '10px Google Sans, sans-serif';
+    ctx.fillText('More data needed', 10, h/2 + 3);
+    return;
+  }
+  
+  const min = Math.max(0, Math.min(...dataPoints) - 10);
+  const max = 100;
+  const range = max - min || 1;
+  const stepX = w / (dataPoints.length - 1);
+  
+  ctx.beginPath();
+  ctx.moveTo(0, h - ((dataPoints[0]-min)/range)*h);
+  for(let i=1; i<dataPoints.length; i++) {
+    ctx.lineTo(i*stepX, h - ((dataPoints[i]-min)/range)*h);
+  }
+  ctx.strokeStyle = '#1e8e3e';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  let grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, 'rgba(30,142,62,0.3)');
+  grad.addColorStop(1, 'rgba(30,142,62,0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function initKeyboardShortcuts() {
+  const overlay = document.getElementById('keyboard-overlay');
+  const closeBtn = document.getElementById('keyboard-close-btn');
+  
+  const toggleOverlay = () => {
+    if (overlay) {
+      overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
+    }
+  };
+  
+  closeBtn?.addEventListener('click', () => { if (overlay) overlay.style.display = 'none'; });
+  overlay?.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+  
+  document.addEventListener('keydown', (e) => {
+    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+      if (e.key === 'Escape') {
+        const edubotDrawer = document.getElementById('edubot-drawer-overlay');
+        if (edubotDrawer && edubotDrawer.style.display !== 'none') edubotDrawer.style.display = 'none';
+      }
+      return;
+    }
+    
+    if (e.key === '?') toggleOverlay();
+    if (e.key === 'Escape') {
+      if (overlay) overlay.style.display = 'none';
+      const edubotDrawer = document.getElementById('edubot-drawer-overlay');
+      if (edubotDrawer) edubotDrawer.style.display = 'none';
+    }
+    
+    const reviewContainer = document.getElementById('review-container');
+    const reviewVisible = reviewContainer && reviewContainer.classList.contains('visible');
+    if (!reviewVisible) return;
+    
+    if (e.key === 'ArrowRight') {
+      const nextBtn = document.getElementById('review-next-btn');
+      if (nextBtn && !nextBtn.disabled) nextBtn.click();
+    }
+    if (e.key === 'ArrowLeft') {
+      const prevBtn = document.getElementById('review-prev-btn');
+      if (prevBtn && !prevBtn.disabled) prevBtn.click();
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      const headerClick = document.getElementById('card-header-click');
+      if (headerClick) headerClick.click();
+    }
+    if (['1','2','3','4'].includes(e.key)) {
+      const opts = document.querySelectorAll('#review-options .mcq-option');
+      const idx = parseInt(e.key) - 1;
+      if (opts[idx] && opts[idx].style.pointerEvents !== 'none') {
+        opts[idx].click();
+      }
+    }
+    if (e.key.toLowerCase() === 'k') document.querySelector('.rating-btn.know')?.click();
+    if (e.key.toLowerCase() === 'f') document.querySelector('.rating-btn.fuzzy')?.click();
+    if (e.key.toLowerCase() === 'd') document.querySelector('.rating-btn.nope')?.click();
+  });
+}
+
