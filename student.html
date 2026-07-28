@@ -70,7 +70,7 @@
             <!-- Day 11: Due cards badge -->
             <span class="due-badge" id="due-cards-badge" style="display:none;">0 cards due</span>
           </div>
-          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
+          <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:8px;">
             <button class="study-mode-btn active" data-mode="standard">
               <span style="font-size:1.1rem; display:block;">🎯</span>
               <span style="font-size:0.75rem; font-weight:600;">Standard</span>
@@ -87,6 +87,11 @@
             <button class="study-mode-btn" data-mode="spaced">
               <span style="font-size:1.1rem; display:block;">📦</span>
               <span style="font-size:0.75rem; font-weight:600;">Spaced Review</span>
+            </button>
+            <!-- Day 12: Voice Mode -->
+            <button class="study-mode-btn" data-mode="voice" id="voice-mode-btn" title="Answer questions by speaking">
+              <span style="font-size:1.1rem; display:block;">🎤</span>
+              <span style="font-size:0.75rem; font-weight:600;">Voice Mode</span>
             </button>
           </div>
         </div>
@@ -111,6 +116,29 @@
         </div>
         <div class="review-progress-bar-bg">
           <div class="review-progress-bar-fill" id="review-progress-bar" style="width:0%;"></div>
+        </div>
+      </div>
+
+      <!-- Day 12: Voice Mode Controls Panel -->
+      <div class="voice-controls-wrap" id="voice-controls-wrap" style="display:none; margin-bottom:12px;">
+        <div class="voice-controls-inner">
+          <div class="voice-status-row">
+            <div class="voice-mic-btn-wrap">
+              <button id="mic-btn" class="mic-btn" title="Click to start / stop listening">
+                <span class="mic-icon">🎤</span>
+                <span class="mic-ring"></span>
+                <span class="mic-ring mic-ring-2"></span>
+              </button>
+            </div>
+            <div class="voice-info">
+              <div class="voice-status-label" id="voice-status-label">Click mic to start listening</div>
+              <div class="voice-hint-text">Say: <em>"Option A"</em> · <em>"B"</em> · <em>"First"</em> · <em>"Know it"</em> · <em>"Fuzzy"</em> · <em>"Don't know"</em></div>
+            </div>
+          </div>
+          <div class="voice-transcript-pill" id="voice-transcript-pill" style="display:none;">
+            <span class="transcript-icon">💬</span>
+            <span id="voice-transcript-text">Listening...</span>
+          </div>
         </div>
       </div>
 
@@ -202,6 +230,23 @@
           <span class="achievement-chip" id="badge-streak">🔥 Streak Master</span>
         </div>
       </div>
+
+      <!-- Day 12: AI Weak-Spot Remediation Plan -->
+      <div class="remediation-section" id="remediation-section" style="width:100%; margin-bottom:20px; display:none;">
+        <div class="remediation-header">
+          <span class="remediation-icon">🚀</span>
+          <div>
+            <div class="remediation-title">AI Weak-Spot Remediation Plan</div>
+            <div class="remediation-subtitle">Personalized recovery strategy for your missed topics</div>
+          </div>
+        </div>
+        <div class="remediation-body" id="remediation-body">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <button class="btn btn-remediation" id="btn-student-remediation" style="width:100%; margin-bottom:16px; display:none;">
+        🚀 Generate My AI Remediation Plan
+      </button>
 
       <!-- Day 11: Student Personal Analytics Dashboard -->
       <div id="student-analytics" style="display:none; width:100%;">

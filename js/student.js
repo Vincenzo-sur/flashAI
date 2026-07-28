@@ -962,3 +962,297 @@ function initKeyboardShortcuts() {
   });
 }
 
+
+// ============================================================
+//  EduFlash AI — Day 12: Voice Study Mode Engine
+// ============================================================
+
+const VoiceQuizEngine = {
+  recognition: null,
+  isListening: false,
+
+  isSupported() {
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  },
+
+  init() {
+    if (!this.isSupported()) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.recognition = new SR();
+    this.recognition.continuous = false;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'en-US';
+
+    this.recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(r => r[0].transcript).join('');
+      this._updateTranscript(transcript);
+      if (event.results[event.results.length - 1].isFinal) {
+        this._parseAndRespond(transcript.trim().toLowerCase());
+      }
+    };
+
+    this.recognition.onend = () => {
+      if (this.isListening) {
+        try { this.recognition.start(); } catch(e) {}
+      } else {
+        this._setMicState(false);
+      }
+    };
+
+    this.recognition.onerror = (e) => {
+      if (e.error !== 'no-speech') {
+        this._setStatus('⚠️ Voice error: ' + e.error + '. Click mic to retry.');
+        this.isListening = false;
+        this._setMicState(false);
+      }
+    };
+
+    const micBtn = document.getElementById('mic-btn');
+    if (micBtn && !micBtn._wired) {
+      micBtn._wired = true;
+      micBtn.addEventListener('click', () => {
+        if (this.isListening) this.stop();
+        else this.start();
+      });
+    }
+  },
+
+  start() {
+    if (!this.recognition) this.init();
+    if (!this.recognition) {
+      this._setStatus('❌ Speech recognition not supported in this browser.');
+      return;
+    }
+    this.isListening = true;
+    this._setMicState(true);
+    this._setStatus('🎙️ Listening… Speak your answer!');
+    try { this.recognition.start(); } catch(e) {}
+  },
+
+  stop() {
+    this.isListening = false;
+    if (this.recognition) this.recognition.stop();
+    this._setMicState(false);
+    this._setStatus('Click mic to start listening');
+    const pill = document.getElementById('voice-transcript-pill');
+    if (pill) pill.style.display = 'none';
+  },
+
+  _setMicState(active) {
+    const micBtn = document.getElementById('mic-btn');
+    if (micBtn) {
+      if (active) micBtn.classList.add('mic-active');
+      else micBtn.classList.remove('mic-active');
+    }
+  },
+
+  _setStatus(text) {
+    const label = document.getElementById('voice-status-label');
+    if (label) label.textContent = text;
+  },
+
+  _updateTranscript(text) {
+    const pill = document.getElementById('voice-transcript-pill');
+    const span = document.getElementById('voice-transcript-text');
+    if (pill && span) {
+      pill.style.display = 'flex';
+      span.textContent = '"' + text + '"';
+    }
+  },
+
+  _parseAndRespond(text) {
+    // MCQ option mappings
+    const optionMap = {
+      'option a': 0, 'choice a': 0, 'first': 0, 'one': 0, ' a ': 0,
+      'option b': 1, 'choice b': 1, 'second': 1, 'two': 1, ' b ': 1,
+      'option c': 2, 'choice c': 2, 'third': 2, 'three': 2, ' c ': 2,
+      'option d': 3, 'choice d': 3, 'fourth': 3, 'four': 3, ' d ': 3,
+    };
+    const ratingMap = {
+      'know it': 'know', 'i know it': 'know', 'know': 'know', 'got it': 'know',
+      'fuzzy': 'fuzzy', 'not sure': 'fuzzy', 'maybe': 'fuzzy', 'kind of': 'fuzzy',
+      "don't know": 'nope', 'do not know': 'nope', 'no idea': 'nope',
+    };
+
+    for (const [phrase, idx] of Object.entries(optionMap)) {
+      if (text.includes(phrase)) {
+        const opts = document.querySelectorAll('#review-options .mcq-option');
+        if (opts[idx] && opts[idx].style.pointerEvents !== 'none') {
+          opts[idx].click();
+          TTSManager.speak('Selecting option ' + ['A','B','C','D'][idx]);
+          this._setStatus('✅ Answered: Option ' + ['A','B','C','D'][idx]);
+          return;
+        }
+      }
+    }
+
+    for (const [phrase, rating] of Object.entries(ratingMap)) {
+      if (text.includes(phrase)) {
+        const sel = rating === 'nope' ? '.rating-btn.nope' : `.rating-btn.${rating}`;
+        const btn = document.querySelector(sel);
+        if (btn) {
+          btn.click();
+          const msg = rating === 'know' ? 'Marked as Know it.' : rating === 'fuzzy' ? 'Marked as Fuzzy.' : "Marked as Don't know.";
+          TTSManager.speak(msg);
+          this._setStatus('✅ Rated: ' + phrase);
+          return;
+        }
+      }
+    }
+
+    if (text.includes('next') || text.includes('skip')) {
+      document.getElementById('review-next-btn')?.click();
+      this._setStatus('⏭️ Next card…');
+      return;
+    }
+    if (text.includes('previous') || text.includes('back')) {
+      document.getElementById('review-prev-btn')?.click();
+      this._setStatus('⏮️ Previous card…');
+      return;
+    }
+    if (text.includes('flip') || text.includes('show answer')) {
+      document.getElementById('card-header-click')?.click();
+      this._setStatus('🔄 Flipping card…');
+      return;
+    }
+
+    this._setStatus('🤔 Didn\'t catch that — say "Option A", "B", "Know it", "Fuzzy"...');
+  }
+};
+
+// Wire voice mode into MutationObserver on review container
+(function wireVoiceMode() {
+  const reviewContainer = document.getElementById('review-container');
+  if (!reviewContainer) return;
+  const mo = new MutationObserver(() => {
+    const wrap = document.getElementById('voice-controls-wrap');
+    if (!wrap) return;
+    if (selectedStudyMode === 'voice' && reviewContainer.classList.contains('visible')) {
+      wrap.style.display = 'block';
+      VoiceQuizEngine.init();
+      VoiceQuizEngine.start();
+    } else if (selectedStudyMode === 'voice' && !reviewContainer.classList.contains('visible')) {
+      VoiceQuizEngine.stop();
+      wrap.style.display = 'none';
+    }
+  });
+  mo.observe(reviewContainer, { attributes: true, attributeFilter: ['class'] });
+})();
+
+// ============================================================
+//  EduFlash AI — Day 12: AI Weak-Spot Remediation Generator
+// ============================================================
+
+async function generateStudentRemediation() {
+  const btn = document.getElementById('btn-student-remediation');
+  const section = document.getElementById('remediation-section');
+  const body = document.getElementById('remediation-body');
+  if (!btn || !body) return;
+
+  const weakCards = sessionAnswers.filter(a => !a.isCorrect || a.rating === 'nope' || a.rating === 'fuzzy');
+  if (weakCards.length === 0) {
+    body.innerHTML = '<p style="color:var(--green-light);font-size:0.85rem;padding:8px 0;">🎉 No weak spots found! You aced this session.</p>';
+    if (section) section.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="remediation-spinner"></span> Building your plan...';
+  if (section) section.style.display = 'block';
+  body.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--yellow);font-size:0.83rem;"><span class="remediation-spinner"></span> Gemini is creating your personalized remediation plan...</div>';
+
+  const cardContext = weakCards.map(a => {
+    const card = currentSession && currentSession.cards
+      ? currentSession.cards.find(c => c.id === a.cardId) : null;
+    return card
+      ? `Topic: ${card.topic || 'General'} | Q: ${card.question} | Correct: ${card.options ? card.options[card.correctIndex] : card.answer}`
+      : '';
+  }).filter(Boolean).join('\n');
+
+  const apiKey = localStorage.getItem('ef_gemini_key') || '';
+
+  if (!apiKey) {
+    // Mock fallback
+    const topics = [...new Set(weakCards.map(a => {
+      const card = currentSession && currentSession.cards
+        ? currentSession.cards.find(c => c.id === a.cardId) : null;
+      return card ? (card.topic || 'General Concepts') : 'General Concepts';
+    }))];
+
+    body.innerHTML = topics.map(topic => `
+      <div class="remediation-topic-block">
+        <div class="remediation-topic-name">📌 ${topic}</div>
+        <div class="remediation-mnemonic">💡 Think of this as the core pillar — trace it back to its definition, then find a real-world example to anchor it in memory.</div>
+        <ul class="remediation-bullets">
+          <li>Re-read your class notes with a focus on the core definition only.</li>
+          <li>Use the Feynman Technique — explain it out loud in your own words.</li>
+          <li>Write a 1-sentence summary and keep it somewhere visible.</li>
+          <li>Find one real-world or everyday example that maps to this concept.</li>
+        </ul>
+      </div>`).join('');
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Regenerate Plan';
+    return;
+  }
+
+  const prompt = `You are an expert AI tutor. A student struggled with these flashcards:
+
+${cardContext}
+
+Create a concise AI Remediation Plan as a JSON array. For each unique topic, include:
+- "topic": string
+- "mnemonic": a short, memorable hook (1–2 sentences)
+- "steps": array of 3-4 short actionable recovery steps
+
+Return ONLY valid JSON. No markdown, no explanations.`;
+
+  try {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
+    const data = await resp.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const jsonStr = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    const plan = JSON.parse(jsonStr);
+    body.innerHTML = plan.map(item => `
+      <div class="remediation-topic-block">
+        <div class="remediation-topic-name">📌 ${item.topic}</div>
+        <div class="remediation-mnemonic">💡 ${item.mnemonic}</div>
+        <ul class="remediation-bullets">
+          ${(item.steps || []).map(s => `<li>${s}</li>`).join('')}
+        </ul>
+      </div>`).join('');
+  } catch (err) {
+    body.innerHTML = `<p style="color:var(--red-light);font-size:0.82rem;">❌ Could not generate plan. Check your API key or try again.</p>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔄 Regenerate Plan';
+}
+
+// Show remediation button when completion screen appears
+(function watchCompletion() {
+  const completionContainer = document.getElementById('completion-container');
+  if (!completionContainer) return;
+  const mo = new MutationObserver(() => {
+    const isVisible = completionContainer.classList.contains('visible') ||
+                      completionContainer.style.display === 'flex' ||
+                      completionContainer.style.display === 'block';
+    if (isVisible) {
+      const btn = document.getElementById('btn-student-remediation');
+      const hasWeak = sessionAnswers.some(a => !a.isCorrect || a.rating === 'nope' || a.rating === 'fuzzy');
+      if (btn) btn.style.display = hasWeak ? 'flex' : 'none';
+      if (btn && !btn._remWired) {
+        btn._remWired = true;
+        btn.addEventListener('click', generateStudentRemediation);
+      }
+    }
+  });
+  mo.observe(completionContainer, { attributes: true, attributeFilter: ['class','style'], childList: true });
+})();

@@ -67,7 +67,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Day 8: Google Classroom API Init
   initGoogleClassroom();
+
+  // Day 12: wire AI Class Remediation Plan button
+  document.getElementById('btn-teacher-remediation')?.addEventListener('click', generateTeacherRemediation);
 });
+
 
 // ── Sidebar collapse toggle & Accordion ─────────────────────
 function initSidebar() {
@@ -2884,10 +2888,124 @@ function initKeyboardShortcuts() {
       NotificationCenter.toggle();
     } else if (e.key.toLowerCase() === 'b') {
       document.getElementById('sidebar-toggle')?.click();
-    } else if (e.key === '?') {
+    } else    if (e.key === '?') {
       if (overlay) {
         overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'none';
       }
     }
   });
+}
+
+// ============================================================
+//  EduFlash AI — Day 12: Teacher AI Class Remediation Plan
+// ============================================================
+
+async function generateTeacherRemediation() {
+  const btn = document.getElementById('btn-teacher-remediation');
+  const panel = document.getElementById('teacher-remediation-panel');
+  const body = document.getElementById('teacher-remediation-body');
+  const loading = document.getElementById('teacher-remediation-loading');
+  if (!btn || !body) return;
+
+  // Gather analytics data from existing sessions
+  const sessions = window.EduStore.getSessions().filter(s => s.responses && s.responses.length > 0);
+  if (sessions.length === 0) {
+    if (panel) panel.style.display = 'block';
+    body.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No session data found. Run a simulator or publish a session first.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px;"></span> Building plan...';
+  if (loading) loading.style.display = 'block';
+  if (panel) panel.style.display = 'none';
+
+  // Build a text summary of weak areas from all sessions
+  const weakSummary = sessions.map(s => {
+    const topic = s.topic || 'Unknown Topic';
+    const total = s.responses.length;
+    const correct = s.responses.filter(r => r.answers && r.answers.some(a => a.isCorrect)).length;
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const nopes = s.responses.reduce((acc, r) => acc + (r.answers ? r.answers.filter(a => a.rating === 'nope').length : 0), 0);
+    const fuzzy = s.responses.reduce((acc, r) => acc + (r.answers ? r.answers.filter(a => a.rating === 'fuzzy').length : 0), 0);
+    return `Session: "${topic}" | MCQ Accuracy: ${pct}% | "Don't Know" ratings: ${nopes} | "Fuzzy" ratings: ${fuzzy}`;
+  }).join('\n');
+
+  const apiKey = localStorage.getItem('ef_gemini_key') || '';
+
+  if (!apiKey) {
+    // Mock fallback plan
+    if (loading) loading.style.display = 'none';
+    if (panel) panel.style.display = 'block';
+    body.innerHTML = sessions.slice(0, 3).map(s => `
+      <div class="remediation-topic-block">
+        <div class="remediation-topic-name">📌 ${s.topic || 'Unknown Topic'}</div>
+        <div class="remediation-mnemonic">💡 Class struggled here — a targeted 5-min warm-up recap before next class will solidify this concept significantly.</div>
+        <ul class="remediation-bullets">
+          <li>Open next class with a quick 2-question pop quiz on this topic (low stakes, warm-up).</li>
+          <li>Use a concrete real-world analogy or demonstration for the hardest sub-concept.</li>
+          <li>Ask 2–3 students to explain it in their own words (peer teaching boosts retention).</li>
+          <li>Assign a 1-paragraph reflection: "What confused me and what I now understand."</li>
+        </ul>
+      </div>`).join('');
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Regenerate Plan';
+    if (typeof showToast === 'function') showToast('AI Remediation plan generated!', 'success');
+    return;
+  }
+
+  const prompt = `You are an expert AI teaching coach.
+A teacher shared this class performance summary:
+
+${weakSummary}
+
+Generate a class-wide AI Remediation Plan as a JSON array. For each session/topic, include:
+- "topic": string
+- "warmup": a 2-3 sentence warm-up activity or discussion starter for the next class
+- "reteach": array of 3-4 specific re-teaching strategies for the teacher
+- "studentTip": one actionable tip the teacher can share directly with students
+
+Return ONLY valid JSON. No markdown.`;
+
+  try {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
+    const data = await resp.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const jsonStr = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    const plan = JSON.parse(jsonStr);
+
+    if (loading) loading.style.display = 'none';
+    if (panel) panel.style.display = 'block';
+
+    body.innerHTML = plan.map(item => `
+      <div class="remediation-topic-block">
+        <div class="remediation-topic-name">📌 ${item.topic}</div>
+        <div class="remediation-mnemonic">🔥 Warm-Up: ${item.warmup}</div>
+        <ul class="remediation-bullets">
+          ${(item.reteach || []).map(s => `<li>${s}</li>`).join('')}
+        </ul>
+        <div style="margin-top:8px; padding:6px 10px; background:rgba(52,168,83,0.08); border-radius:6px; font-size:0.78rem; color:var(--green-light);">
+          💬 Student Tip: ${item.studentTip}
+        </div>
+      </div>`).join('');
+
+    if (typeof showToast === 'function') showToast('AI Class Remediation Plan generated!', 'success');
+    if (typeof NotificationCenter !== 'undefined') {
+      NotificationCenter.add('Class Remediation Ready', 'Your AI remediation strategy is ready in Analytics.', '🚀');
+    }
+  } catch (err) {
+    if (loading) loading.style.display = 'none';
+    if (panel) panel.style.display = 'block';
+    body.innerHTML = `<p style="color:var(--red-light);font-size:0.82rem;">❌ Could not generate plan. Check your API key.</p>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔄 Regenerate Plan';
 }

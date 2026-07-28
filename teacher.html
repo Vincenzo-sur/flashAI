@@ -769,10 +769,32 @@
               <span class="sessions-title">AI Re-teaching Recommendations</span>
               <span class="sessions-count">Powered by Gemini AI</span>
             </div>
-            <button class="btn btn-green btn-sm" id="btn-refresh-suggestions">💡 Generate Advice</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-green btn-sm" id="btn-refresh-suggestions">💡 Generate Advice</button>
+              <!-- Day 12: AI Class Remediation Plan -->
+              <button class="btn btn-remediation btn-sm" id="btn-teacher-remediation" title="Generate class-wide remediation strategy">🚀 AI Class Remediation Plan</button>
+            </div>
           </div>
           <p id="suggestions-loading" style="display: none; font-size: 0.85rem; color: var(--yellow); margin-bottom: 16px;">
             Gemini is analyzing student performance data...
+          </p>
+          <!-- Day 12: Teacher AI Remediation Results Panel -->
+          <div id="teacher-remediation-panel" style="display:none; margin-bottom: 20px;">
+            <div class="remediation-section" style="width:100%;">
+              <div class="remediation-header">
+                <span class="remediation-icon">🚀</span>
+                <div>
+                  <div class="remediation-title">AI Class Remediation Plan</div>
+                  <div class="remediation-subtitle">Tailored re-teaching strategies for the whole class</div>
+                </div>
+              </div>
+              <div class="remediation-body" id="teacher-remediation-body">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+          <p id="teacher-remediation-loading" style="display:none; font-size:0.85rem; color:var(--yellow); margin-bottom:16px;">
+            🚀 Gemini is building your class remediation plan...
           </p>
           <div class="suggestions-list" id="suggestions-list-container">
             <!-- Dynamic suggestions cards -->
