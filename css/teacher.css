@@ -349,6 +349,7 @@
 ──────────────────────────────────────────── */
 .main-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -798,18 +799,25 @@
 ──────────────────────────────────────────── */
 @media (max-width: 768px) {
   .sidebar-wrap {
-    position: fixed;
-    left: 0; top: 56px; bottom: 0;
-    z-index: 50;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+    position: relative;
+    z-index: 10;
+    box-shadow: none;
   }
-  .sidebar-wrap.collapsed .sidebar {
-    transform: translateX(-100%);
-    width: 240px;
-    min-width: 240px;
+  .sidebar {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .main-content { margin-left: 0; }
-  .panel-body { padding: 20px 16px; }
+  .sidebar-wrap.collapsed .sidebar,
+  .sidebar.collapsed {
+    width: 56px;
+    min-width: 56px;
+    transform: none;
+  }
+  .main-content {
+    flex: 1;
+    min-width: 0;
+    margin-left: 0;
+  }
+  .panel-body { padding: 16px 12px; }
   .form-row { grid-template-columns: 1fr; }
   .context-stats { display: none; }
   .session-card { grid-template-columns: 1fr; }

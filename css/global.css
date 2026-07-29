@@ -233,6 +233,10 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border-right-color: #dadce0;
   box-shadow: inset 3px 0 0 rgba(30,142,62,0.2);
 }
+[data-theme="light"] .sidebar-toggle {
+  background: #f1f3f4;
+  box-shadow: 0 0 0 3px #ffffff, 0 2px 8px rgba(0,0,0,0.15);
+}
 [data-theme="light"] .sidebar-header { border-bottom-color: #dadce0; }
 [data-theme="light"] .context-strip { background: #ffffff; border-bottom-color: #dadce0; }
 [data-theme="light"] .panel-header { border-bottom-color: #dadce0; }
