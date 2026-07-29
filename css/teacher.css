@@ -2717,3 +2717,308 @@
   font-size: 0.85rem;
   color: var(--text-muted);
 }
+
+/* ============================================================
+   Day 13: AI Remediation Button Fix (teacher page)
+   The style only lived in student.css — adding it here too
+   ============================================================ */
+.btn-remediation {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+  white-space: nowrap;
+}
+.btn-remediation:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.55);
+  opacity: 0.95;
+}
+.btn-remediation:disabled {
+  opacity: 0.5;
+  transform: none;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ============================================================
+   Day 13: Session Comparison Panel
+   ============================================================ */
+.session-compare-wrap {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-top: 28px;
+}
+.session-compare-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.session-compare-selectors {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.session-compare-selectors select {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 30px;
+}
+.session-compare-selectors select:focus {
+  outline: none;
+  border-color: var(--green-light);
+  box-shadow: 0 0 0 2px rgba(52, 168, 83, 0.18);
+}
+.compare-vs-label {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.compare-table thead tr {
+  background: rgba(52, 168, 83, 0.06);
+}
+.compare-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  vertical-align: middle;
+}
+.compare-table tr:last-child td {
+  border-bottom: none;
+}
+.compare-table td:first-child {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.compare-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 6px;
+}
+.compare-delta-badge.up {
+  background: rgba(52, 168, 83, 0.15);
+  color: var(--green-light);
+}
+.compare-delta-badge.down {
+  background: rgba(242, 139, 130, 0.15);
+  color: #f28b82;
+}
+.compare-delta-badge.neutral {
+  background: rgba(251, 188, 4, 0.12);
+  color: var(--yellow);
+}
+.compare-no-data {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-dim);
+  font-size: 0.84rem;
+}
+
+/* ============================================================
+   Day 13: Card Difficulty Heat-Map
+   ============================================================ */
+.heatmap-section {
+  margin-top: 28px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+.heatmap-section-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.heatmap-section-subtitle {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+.heatmap-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.heatmap-tile {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: visible;
+}
+.heatmap-tile:hover {
+  transform: scale(1.12);
+  z-index: 10;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.heatmap-tile .tile-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.02em;
+}
+.heatmap-tile .tile-pct {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+}
+.heatmap-tile.difficulty-easy   { background: linear-gradient(135deg, #1e8e3e, #34a853); }
+.heatmap-tile.difficulty-medium { background: linear-gradient(135deg, #e37400, #fbbc04); }
+.heatmap-tile.difficulty-hard   { background: linear-gradient(135deg, #b31412, #f28b82); }
+.heatmap-tile.difficulty-none   { background: linear-gradient(135deg, #3c4043, #5f6368); }
+.heatmap-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #202124;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.73rem;
+  color: var(--text);
+  width: 200px;
+  z-index: 100;
+  line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.heatmap-tile:hover .heatmap-tooltip {
+  display: block;
+}
+.heatmap-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.heatmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.73rem;
+  color: var(--text-dim);
+}
+.heatmap-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Day 13: Sessions Empty State (enhanced)
+   ============================================================ */
+.sessions-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 12px;
+}
+.sessions-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 4px;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+.sessions-empty-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.sessions-empty-sub {
+  font-size: 0.83rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 320px;
+}
+.sessions-empty-cta {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--green-light);
+  background: rgba(52, 168, 83, 0.1);
+  border: 1px solid rgba(52, 168, 83, 0.25);
+  border-radius: 20px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  font-weight: 500;
+}
+.sessions-empty-cta:hover {
+  background: rgba(52, 168, 83, 0.18);
+  transform: translateY(-1px);
+}

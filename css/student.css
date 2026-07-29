@@ -1047,4 +1047,153 @@
   to { transform: rotate(360deg); }
 }
 
+/* ============================================================
+   Day 13: Student Progress Timeline
+   ============================================================ */
+.progress-timeline-wrap {
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  animation: fadeInUp 0.5s ease;
+}
+.progress-timeline-title {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.progress-timeline-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 0;
+}
+.progress-timeline-line-bg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border);
+  transform: translateY(-50%);
+  z-index: 0;
+  border-radius: 2px;
+}
+.progress-timeline-line-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green-light), #4f46e5);
+  transform: translateY(-50%);
+  z-index: 1;
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.progress-dot-wrap {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.progress-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  cursor: default;
+  position: relative;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  flex-shrink: 0;
+}
+.progress-dot.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+.progress-dot.correct  { background: var(--green-light); box-shadow: 0 0 8px rgba(52,168,83,0.5); }
+.progress-dot.wrong    { background: #f28b82; box-shadow: 0 0 8px rgba(242,139,130,0.5); }
+.progress-dot.skipped  { background: var(--yellow); box-shadow: 0 0 8px rgba(251,188,4,0.35); }
+.progress-dot-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #202124;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.71rem;
+  color: var(--text);
+  width: 160px;
+  z-index: 50;
+  line-height: 1.4;
+  pointer-events: none;
+  white-space: normal;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+.progress-dot:hover .progress-dot-tooltip {
+  display: block;
+}
+.progress-timeline-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.timeline-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.timeline-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Study mode button tooltip ── */
+.study-mode-btn {
+  position: relative;
+}
+.study-mode-btn::after {
+  content: attr(data-tooltip);
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #202124;
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+.study-mode-btn:hover::after {
+  display: block;
+}
+
+
 

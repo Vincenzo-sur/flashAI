@@ -689,6 +689,10 @@
           <div id="results-active" style="display:none;">
             <!-- Populated by renderResultsPanel() -->
           </div>
+          <!-- Day 13: Card Difficulty Heat-Map (injected by JS after results-active populates) -->
+          <div id="heatmap-container" style="display:none;">
+            <!-- Populated by renderCardDifficultyHeatMap() -->
+          </div>
         </div>
 
         <!-- ══════════════════════════════
@@ -749,6 +753,23 @@
           <h3 style="font-family: 'Google Sans', sans-serif; font-size: 1rem; margin-bottom: 12px; margin-top: 8px;">Session Performance Details</h3>
           <div class="session-list" id="analytics-sessions-list">
             <!-- Dynamic session stats rows -->
+          </div>
+
+          <!-- Day 13: Session Comparison Panel -->
+          <div class="session-compare-wrap" id="session-compare-wrap">
+            <div class="session-compare-title">⚖️ Session Comparison</div>
+            <div class="session-compare-selectors">
+              <select id="compare-session-a" aria-label="Compare session A">
+                <option value="">— Select Session A —</option>
+              </select>
+              <span class="compare-vs-label">vs</span>
+              <select id="compare-session-b" aria-label="Compare session B">
+                <option value="">— Select Session B —</option>
+              </select>
+            </div>
+            <div id="compare-table-container">
+              <p class="compare-no-data">Select two sessions above to compare their performance metrics.</p>
+            </div>
           </div>
         </div>
 

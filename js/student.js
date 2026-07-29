@@ -1252,7 +1252,79 @@ Return ONLY valid JSON. No markdown, no explanations.`;
         btn._remWired = true;
         btn.addEventListener('click', generateStudentRemediation);
       }
+      // Day 13: render the progress timeline
+      renderProgressTimeline();
     }
   });
   mo.observe(completionContainer, { attributes: true, attributeFilter: ['class','style'], childList: true });
 })();
+
+// ============================================================
+//  EduFlash AI — Day 13: Student Progress Timeline
+// ============================================================
+
+function renderProgressTimeline() {
+  const wrap  = document.getElementById('progress-timeline-wrap');
+  const track = document.getElementById('progress-timeline-track');
+  const fill  = document.getElementById('progress-timeline-fill');
+  if (!wrap || !track || !fill) return;
+
+  // Collect ordered answers (same order as cards were shown)
+  if (!sessionAnswers || sessionAnswers.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+
+  // Remove any previously injected dots (keep the two line elements)
+  track.querySelectorAll('.progress-dot-wrap').forEach(el => el.remove());
+  fill.style.width = '0%';
+
+  const answers = sessionAnswers;
+
+  // Build dot wrappers
+  answers.forEach((answer, idx) => {
+    const dotClass = answer.isCorrect ? 'correct' : 'wrong';
+    const rating   = answer.rating || '';
+    const ratingLabel = rating === 'know' ? '✓ Know it' : rating === 'fuzzy' ? '~ Fuzzy' : rating === 'nope' ? '✗ Don\'t know' : '';
+
+    // Find card question if available
+    const card = currentSession && currentSession.cards
+      ? currentSession.cards.find(c => c.id === answer.cardId)
+      : null;
+    const qShort = card
+      ? (card.question.length > 50 ? card.question.slice(0, 48) + '…' : card.question)
+      : `Card ${idx + 1}`;
+
+    const dotWrap = document.createElement('div');
+    dotWrap.className = 'progress-dot-wrap';
+
+    dotWrap.innerHTML = `
+      <div class="progress-dot ${dotClass}" style="transition-delay:${idx * 80}ms;">
+        <div class="progress-dot-tooltip">
+          <strong>Q${idx + 1}:</strong> ${qShort}<br/>
+          <span style="color:${answer.isCorrect ? 'var(--green-light)' : '#f28b82'};">
+            ${answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
+          </span>
+          ${ratingLabel ? `<br/><span style="color:var(--text-dim);font-size:0.68rem;">${ratingLabel}</span>` : ''}
+        </div>
+      </div>
+    `;
+    track.appendChild(dotWrap);
+  });
+
+  // Animate dots in sequence, then draw the connecting line
+  requestAnimationFrame(() => {
+    const dots = track.querySelectorAll('.progress-dot');
+    dots.forEach((dot, idx) => {
+      setTimeout(() => dot.classList.add('revealed'), idx * 80 + 50);
+    });
+
+    // Expand the gradient line after dots start appearing
+    setTimeout(() => {
+      fill.style.width = '100%';
+    }, 100);
+  });
+}
+

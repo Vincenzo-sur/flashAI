@@ -70,6 +70,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Day 12: wire AI Class Remediation Plan button
   document.getElementById('btn-teacher-remediation')?.addEventListener('click', generateTeacherRemediation);
+
+  // Day 13: wire Session Comparison dropdowns
+  ['compare-session-a', 'compare-session-b'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', renderSessionComparison);
+  });
 });
 
 
@@ -196,6 +201,10 @@ function switchPanel(panelId) {
   if (panelId === 'overview' || panelId === 'topics' || panelId === 'suggestions') {
     renderAnalytics();
   }
+
+  // Day 13: auto-scroll main content to top on every panel switch
+  const mainContent = document.getElementById('main-content');
+  if (mainContent) mainContent.scrollTop = 0;
 }
 
 // ── Gemini API Settings Modal ──────────────────────────────
@@ -865,6 +874,7 @@ window.editDraft = function(id) {
 window.viewSessionResults = function(id) {
   selectedResultsSessionId = id;
   renderResultsPanel(id);
+  renderCardDifficultyHeatMap(id);  // Day 13
   switchPanel('results');
 };
 
@@ -887,6 +897,7 @@ function renderAnalytics() {
       <p style="color:var(--text-dim); text-align:center; padding: 24px;">No topics data. Generate and review cards first.</p>
     `;
     destroyCharts();
+    populateCompareDropdowns(); // Day 13: clear dropdowns too
     return;
   }
 
@@ -964,7 +975,11 @@ function renderAnalytics() {
   
   // Render AI suggestions
   renderAISuggestionsList();
+
+  // Day 13: refresh comparison dropdowns with current sessions
+  populateCompareDropdowns();
 }
+
 
 function renderTopicStrengthHeatmap(sessions) {
   const container = document.getElementById('topic-strength-list-container');
@@ -2099,6 +2114,201 @@ window.toggleAccordionRow = function(idx) {
   const isOpen = row.classList.toggle('open');
   body.style.maxHeight = isOpen ? body.scrollHeight + 'px' : '0';
 };
+
+// ============================================================
+//  Day 13: Session Comparison Panel
+// ============================================================
+
+function populateCompareDropdowns() {
+  const sessions = window.EduStore.getSessions().filter(s => s.status !== 'draft');
+  const selA = document.getElementById('compare-session-a');
+  const selB = document.getElementById('compare-session-b');
+  if (!selA || !selB) return;
+
+  const optionsHTML = [
+    '<option value="">— Select Session —</option>',
+    ...sessions.map(s => `<option value="${s.id}">${s.topic} (${s.date})</option>`)
+  ].join('');
+
+  const prevA = selA.value;
+  const prevB = selB.value;
+  selA.innerHTML = optionsHTML;
+  selB.innerHTML = optionsHTML;
+  if (prevA) selA.value = prevA;
+  if (prevB) selB.value = prevB;
+}
+
+function renderSessionComparison() {
+  const idA = document.getElementById('compare-session-a')?.value;
+  const idB = document.getElementById('compare-session-b')?.value;
+  const container = document.getElementById('compare-table-container');
+  if (!container) return;
+
+  if (!idA || !idB || idA === idB) {
+    container.innerHTML = '<p class="compare-no-data">Select two <em>different</em> sessions above to compare.</p>';
+    return;
+  }
+
+  const sA = window.EduStore.getSessionById(idA);
+  const sB = window.EduStore.getSessionById(idB);
+  if (!sA || !sB) return;
+
+  function getMetrics(session) {
+    const responses = session.responses || [];
+    let correct = 0, total = 0, know = 0, fuzzy = 0, nope = 0;
+    responses.forEach(r => {
+      r.cardResponses.forEach(cr => {
+        total++;
+        if (cr.isCorrect) correct++;
+        if (cr.rating === 'know')  know++;
+        if (cr.rating === 'fuzzy') fuzzy++;
+        if (cr.rating === 'nope')  nope++;
+      });
+    });
+    const ratingTotal = know + fuzzy + nope || 1;
+    return {
+      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+      participation: responses.length,
+      know:  Math.round((know  / ratingTotal) * 100),
+      fuzzy: Math.round((fuzzy / ratingTotal) * 100),
+      nope:  Math.round((nope  / ratingTotal) * 100),
+      cards: session.cards.length
+    };
+  }
+
+  function deltaBadge(a, b, unit = '%', higherIsBetter = true) {
+    const diff = b - a;
+    if (diff === 0) return `<span class="compare-delta-badge neutral">= Same</span>`;
+    const up = higherIsBetter ? diff > 0 : diff < 0;
+    const arrow = diff > 0 ? '↑' : '↓';
+    const cls = up ? 'up' : 'down';
+    return `<span class="compare-delta-badge ${cls}">${arrow} ${Math.abs(diff)}${unit}</span>`;
+  }
+
+  const mA = getMetrics(sA);
+  const mB = getMetrics(sB);
+
+  container.innerHTML = `
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>${escapeHTML(sA.topic)}</th>
+          <th>${escapeHTML(sB.topic)}</th>
+          <th>Change</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>MCQ Accuracy</td>
+          <td>${mA.accuracy}%</td>
+          <td>${mB.accuracy}%</td>
+          <td>${deltaBadge(mA.accuracy, mB.accuracy, '%', true)}</td>
+        </tr>
+        <tr>
+          <td>Participation</td>
+          <td>${mA.participation} students</td>
+          <td>${mB.participation} students</td>
+          <td>${deltaBadge(mA.participation, mB.participation, '', true)}</td>
+        </tr>
+        <tr>
+          <td>✓ Know it rate</td>
+          <td>${mA.know}%</td>
+          <td>${mB.know}%</td>
+          <td>${deltaBadge(mA.know, mB.know, '%', true)}</td>
+        </tr>
+        <tr>
+          <td>~ Fuzzy rate</td>
+          <td>${mA.fuzzy}%</td>
+          <td>${mB.fuzzy}%</td>
+          <td>${deltaBadge(mA.fuzzy, mB.fuzzy, '%', false)}</td>
+        </tr>
+        <tr>
+          <td>✗ Don't Know rate</td>
+          <td>${mA.nope}%</td>
+          <td>${mB.nope}%</td>
+          <td>${deltaBadge(mA.nope, mB.nope, '%', false)}</td>
+        </tr>
+        <tr>
+          <td>Card Count</td>
+          <td>${mA.cards} cards</td>
+          <td>${mB.cards} cards</td>
+          <td><span class="compare-delta-badge neutral">=</span></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+// ============================================================
+//  Day 13: Card Difficulty Heat-Map
+// ============================================================
+
+function renderCardDifficultyHeatMap(sessionId) {
+  const container = document.getElementById('heatmap-container');
+  if (!container) return;
+
+  const session = window.EduStore.getSessionById(sessionId);
+  if (!session || !session.cards || session.cards.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  const responses = session.responses || [];
+  if (responses.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  const tilesHTML = session.cards.map((card, idx) => {
+    let correct = 0;
+    responses.forEach(res => {
+      const cr = res.cardResponses.find(r => r.cardId === card.id);
+      if (cr && cr.isCorrect) correct++;
+    });
+    const wrongCount = responses.length - correct;
+    const wrongPct   = responses.length > 0 ? Math.round((wrongCount / responses.length) * 100) : 0;
+
+    let diffClass, diffLabel;
+    if (wrongPct < 30)       { diffClass = 'difficulty-easy';   diffLabel = 'Easy';   }
+    else if (wrongPct < 60)  { diffClass = 'difficulty-medium'; diffLabel = 'Medium'; }
+    else                     { diffClass = 'difficulty-hard';   diffLabel = 'Hard';   }
+
+    const q = card.question.length > 60 ? card.question.slice(0, 58) + '…' : card.question;
+
+    return `
+      <div class="heatmap-tile ${diffClass}" title="Q${idx + 1}: ${wrongPct}% wrong">
+        <span class="tile-label">Q${idx + 1}</span>
+        <span class="tile-pct">${wrongPct}%</span>
+        <div class="heatmap-tooltip">
+          <strong>Q${idx + 1}:</strong> ${escapeHTML(q)}<br/>
+          <span style="color:#f28b82;">❌ ${wrongPct}% wrong (${wrongCount}/${responses.length})</span><br/>
+          <span style="color:rgba(255,255,255,0.5); font-size:0.68rem;">${diffLabel} difficulty</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="heatmap-section">
+      <div class="heatmap-section-title">🌡️ Card Difficulty Heat-Map</div>
+      <div class="heatmap-section-subtitle">Tile color shows wrong-answer rate per card — hover to see details</div>
+      <div class="heatmap-grid">${tilesHTML}</div>
+      <div class="heatmap-legend">
+        <span class="heatmap-legend-item">
+          <span class="heatmap-legend-dot" style="background:#34a853;"></span>Easy (&lt;30% wrong)
+        </span>
+        <span class="heatmap-legend-item">
+          <span class="heatmap-legend-dot" style="background:#fbbc04;"></span>Medium (30–60%)
+        </span>
+        <span class="heatmap-legend-item">
+          <span class="heatmap-legend-dot" style="background:#f28b82;"></span>Hard (&gt;60% wrong)
+        </span>
+      </div>
+    </div>
+  `;
+}
 
 // ── CSV Export ─────────────────────────────────────────
 window.exportSessionCSV = function(id) {
