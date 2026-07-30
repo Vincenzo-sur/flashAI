@@ -68,9 +68,9 @@
 .input-field::placeholder { color: var(--text-dim); }
 .input-field:focus { border-color: var(--green); }
 
-/* Session picker (hidden until class code entered) */
+/* Session picker */
 .session-picker {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 20px;

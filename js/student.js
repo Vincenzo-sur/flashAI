@@ -240,17 +240,24 @@ const AchievementTracker = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Day 6: init Firebase in background (no-op if no config)
-  if (typeof window.EduStore !== 'undefined' && window.EduStore.initFirebase) {
-    await window.EduStore.initFirebase();
-  }
+function setupStudentApp() {
   initStudentEntry();
   initReviewControls();
   checkUrlParams();
   initEduBotTutor(); // Day 11
   initKeyboardShortcuts(); // Day 11
-});
+
+  // Day 6: init Firebase in background without blocking UI
+  if (typeof window.EduStore !== 'undefined' && window.EduStore.initFirebase) {
+    window.EduStore.initFirebase().catch(e => console.warn('Firebase init error:', e));
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupStudentApp);
+} else {
+  setupStudentApp();
+}
 
 // ── Check URL Parameters for Direct Links (Day 8) ────────────
 function checkUrlParams() {
@@ -284,25 +291,28 @@ function initStudentEntry() {
   const startBtn    = document.getElementById('start-btn');
   let selectedSessionId = null;
 
-  if (!codeInput) return;
+  if (codeInput && !codeInput.value) {
+    codeInput.value = 'ef-2024';
+  }
 
-  codeInput.addEventListener('input', () => {
-    const val = codeInput.value.trim().toLowerCase();
-    
-    // Reveal session selector if code is valid
-    if (val === 'ef-2024' || val.length >= 4) {
-      loadSessionsList(val);
-      picker.classList.add('visible');
-      const studySelector = document.getElementById('study-mode-selector');
-      if (studySelector) studySelector.style.display = 'block';
-    } else {
-      picker.classList.remove('visible');
-      const studySelector = document.getElementById('study-mode-selector');
-      if (studySelector) studySelector.style.display = 'none';
-      selectedSessionId = null;
-      startBtn.disabled = true;
-    }
-  });
+  // Make sure picker and study selector are visible by default
+  if (picker) {
+    picker.style.display = 'flex';
+    picker.classList.add('visible');
+  }
+  const studySelector = document.getElementById('study-mode-selector');
+  if (studySelector) studySelector.style.display = 'block';
+
+  if (codeInput) {
+    codeInput.addEventListener('input', () => {
+      const val = codeInput.value.trim().toLowerCase();
+      try {
+        loadSessionsList(val);
+      } catch (err) {
+        console.warn('loadSessionsList error:', err);
+      }
+    });
+  }
 
   // Wire Day 9 Study Mode selector buttons
   const modeBtns = document.querySelectorAll('.study-mode-btn');
@@ -317,93 +327,175 @@ function initStudentEntry() {
   });
 
   function loadSessionsList(code) {
-    let sessions = window.EduStore.getSessions().filter(s => s.status === 'live');
-    // Fallback: if no 'live' sessions exist, load all published/non-draft sessions so student can practice
-    if (sessions.length === 0) {
-      sessions = window.EduStore.getSessions().filter(s => s.status !== 'draft');
-    }
-    // Fallback 2: if still 0, load all available sessions
-    if (sessions.length === 0) {
-      sessions = window.EduStore.getSessions();
-    }
-
-    optionsDiv.innerHTML = '';
-
-    if (sessions.length === 0) {
-      optionsDiv.innerHTML = `
-        <div style="font-size:0.8rem; color:var(--text-dim); text-align:center; padding:12px; border:1px dashed var(--border); border-radius:var(--radius);">
-          No active review sessions found for this class code.
-        </div>
-      `;
-      startBtn.disabled = true;
-      return;
+    let sessions = [];
+    try {
+      if (window.EduStore && typeof window.EduStore.getSessions === 'function') {
+        sessions = window.EduStore.getSessions() || [];
+      }
+    } catch (e) {
+      console.warn("EduStore error:", e);
     }
 
-    sessions.forEach(sess => {
-      const option = document.createElement('div');
-      option.className = 'session-option';
-      option.dataset.id = sess.id;
-      option.innerHTML = `
-        <div class="session-option-left">
-          <div class="session-topic">${escapeHTML(sess.topic)}</div>
-          <div class="session-date">${sess.subject} · ${sess.date}</div>
-        </div>
-        <span class="session-cards-count">${sess.cards.length} cards</span>
-      `;
+    // Filter live or non-draft sessions
+    let liveSessions = sessions.filter(s => s.status === 'live');
+    if (liveSessions.length > 0) sessions = liveSessions;
+    else {
+      let published = sessions.filter(s => s.status !== 'draft');
+      if (published.length > 0) sessions = published;
+    }
 
-      option.addEventListener('click', () => {
-        document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedSessionId = sess.id;
-        startBtn.disabled = false;
-        
-        // Day 11: update due badge
-        const dueBadge = document.getElementById('due-cards-badge');
-        if (dueBadge) {
-          const dueCount = SpacedRepetitionEngine.getDueCount(sess.id, sess.cards);
-          dueBadge.textContent = `${dueCount} card${dueCount !== 1 ? 's' : ''} due`;
-          dueBadge.style.display = 'inline-block';
-        }
+    // Fallback default session if store returned empty array
+    if (sessions.length === 0) {
+      sessions = [{
+        id: 'session-1',
+        subject: 'Physics',
+        topic: "Newton's Laws of Motion",
+        date: new Date().toISOString().split('T')[0],
+        status: 'live',
+        cards: [
+          {
+            id: 'card-1-1',
+            question: "Which of Newton's laws states that an object at rest stays at rest unless acted on by an external force?",
+            options: ["Newton's Second Law", "Newton's First Law", "Newton's Third Law", "Law of Gravitation"],
+            correctIndex: 1,
+            answer: "Newton's First Law of Motion, also called the Law of Inertia — objects resist changes to their state of motion.",
+            topic: "Inertia"
+          },
+          {
+            id: 'card-1-2',
+            question: "What does F = ma represent in classical mechanics?",
+            options: ["Force equals mass times acceleration", "Frequency equals mass times area", "Force equals momentum times angle", "None of the above"],
+            correctIndex: 0,
+            answer: "Newton's Second Law: Force (F) equals mass (m) multiplied by acceleration (a). It describes how a net force changes an object's motion.",
+            topic: "Force & Acceleration"
+          },
+          {
+            id: 'card-1-3',
+            question: "Newton's Third Law states that every action has an equal and opposite...",
+            options: ["Velocity", "Momentum", "Reaction", "Energy"],
+            correctIndex: 2,
+            answer: "Every action has an equal and opposite reaction.",
+            topic: "Action-Reaction"
+          }
+        ]
+      }];
+    }
+
+    if (optionsDiv) {
+      optionsDiv.innerHTML = '';
+
+      sessions.forEach((sess, idx) => {
+        const option = document.createElement('div');
+        option.className = `session-option ${idx === 0 ? 'selected' : ''}`;
+        option.dataset.id = sess.id;
+        option.innerHTML = `
+          <div class="session-option-left">
+            <div class="session-topic">${escapeHTML(sess.topic)}</div>
+            <div class="session-date">${sess.subject} · ${sess.date}</div>
+          </div>
+          <span class="session-cards-count">${(sess.cards || []).length} cards</span>
+        `;
+
+        option.addEventListener('click', () => {
+          document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
+          option.classList.add('selected');
+          selectedSessionId = sess.id;
+          if (startBtn) startBtn.disabled = false;
+          
+          try {
+            const dueBadge = document.getElementById('due-cards-badge');
+            if (dueBadge && typeof SpacedRepetitionEngine !== 'undefined') {
+              const dueCount = SpacedRepetitionEngine.getDueCount(sess.id, sess.cards);
+              dueBadge.textContent = `${dueCount} card${dueCount !== 1 ? 's' : ''} due`;
+              dueBadge.style.display = 'inline-block';
+            }
+          } catch(e) {}
+        });
+
+        optionsDiv.appendChild(option);
       });
-
-      optionsDiv.appendChild(option);
-    });
-
-    // Auto-select first session option by default
-    const firstOption = optionsDiv.querySelector('.session-option');
-    if (firstOption) {
-      firstOption.click();
     }
+
+    // Auto-select first session & enable start button
+    selectedSessionId = sessions[0].id;
+    if (startBtn) startBtn.disabled = false;
+
+    try {
+      const dueBadge = document.getElementById('due-cards-badge');
+      if (dueBadge && typeof SpacedRepetitionEngine !== 'undefined') {
+        const dueCount = SpacedRepetitionEngine.getDueCount(sessions[0].id, sessions[0].cards);
+        dueBadge.textContent = `${dueCount} card${dueCount !== 1 ? 's' : ''} due`;
+        dueBadge.style.display = 'inline-block';
+      }
+    } catch(e) {}
   }
 
-  startBtn.addEventListener('click', (e) => {
-    if (e) e.preventDefault();
-    if (!selectedSessionId) {
-      const sessions = window.EduStore.getSessions();
-      if (sessions.length > 0) selectedSessionId = sessions[0].id;
-    }
-    if (!selectedSessionId) return;
-    const session = window.EduStore.getSessionById(selectedSessionId);
-    if (session) {
+  // Load sessions immediately on page init
+  try {
+    loadSessionsList('ef-2024');
+  } catch(e) {}
+
+  if (startBtn) {
+    startBtn.disabled = false;
+    startBtn.removeAttribute('disabled');
+    startBtn.onclick = function(e) {
+      if (e) e.preventDefault();
+      let session = null;
+      if (selectedSessionId && window.EduStore && typeof window.EduStore.getSessionById === 'function') {
+        session = window.EduStore.getSessionById(selectedSessionId);
+      }
+      if (!session) {
+        const sessions = (window.EduStore && typeof window.EduStore.getSessions === 'function') ? window.EduStore.getSessions() : [];
+        if (sessions.length > 0) session = sessions[0];
+      }
+      if (!session) {
+        session = getDefaultSession();
+      }
       startReview(session);
-    }
-  });
+    };
+  }
+}
 
-  // Auto-populate default code ef-2024 on load so student page is instantly ready
-  if (codeInput && !codeInput.value) {
-    codeInput.value = 'ef-2024';
-  }
-  if (codeInput) {
-    codeInput.dispatchEvent(new Event('input'));
-  }
+function getDefaultSession() {
+  return {
+    id: 'session-1',
+    subject: 'Physics',
+    topic: "Newton's Laws of Motion",
+    date: new Date().toISOString().split('T')[0],
+    status: 'live',
+    cards: [
+      {
+        id: 'card-1-1',
+        question: "Which of Newton's laws states that an object at rest stays at rest unless acted on by an external force?",
+        options: ["Newton's Second Law", "Newton's First Law", "Newton's Third Law", "Law of Gravitation"],
+        correctIndex: 1,
+        answer: "Newton's First Law of Motion, also called the Law of Inertia — objects resist changes to their state of motion.",
+        topic: "Inertia"
+      },
+      {
+        id: 'card-1-2',
+        question: "What does F = ma represent in classical mechanics?",
+        options: ["Force equals mass times acceleration", "Frequency equals mass times area", "Force equals momentum times angle", "None of the above"],
+        correctIndex: 0,
+        answer: "Newton's Second Law: Force (F) equals mass (m) multiplied by acceleration (a). It describes how a net force changes an object's motion.",
+        topic: "Force & Acceleration"
+      },
+      {
+        id: 'card-1-3',
+        question: "Newton's Third Law states that every action has an equal and opposite...",
+        options: ["Velocity", "Momentum", "Reaction", "Energy"],
+        correctIndex: 2,
+        answer: "Every action has an equal and opposite reaction.",
+        topic: "Action-Reaction"
+      }
+    ]
+  };
 }
 
 // ── Start Review Flow ───────────────────────────────────────
 function startReview(session) {
-  if (!session) {
-    const allSessions = window.EduStore.getSessions();
-    if (allSessions.length > 0) session = allSessions[0];
-    else return;
+  if (!session || !session.cards || session.cards.length === 0) {
+    session = getDefaultSession();
   }
 
   currentSession = JSON.parse(JSON.stringify(session));
@@ -424,25 +516,36 @@ function startReview(session) {
     }
   } else if (selectedStudyMode === 'spaced') {
     // Day 11: Spaced Repetition Mode
-    const due = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
-    if (due && due.length > 0) {
-      currentSession.cards = due;
+    if (typeof SpacedRepetitionEngine !== 'undefined') {
+      const due = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
+      if (due && due.length > 0) {
+        currentSession.cards = due;
+      }
     }
   }
 
   // Safety fallback: if mode filtering resulted in 0 cards or session cards are missing, use session's original cards
   if (!currentSession.cards || currentSession.cards.length === 0) {
-    currentSession.cards = JSON.parse(JSON.stringify(session.cards || []));
+    currentSession.cards = JSON.parse(JSON.stringify(session.cards || getDefaultSession().cards));
   }
 
   currentCardIndex = 0;
   sessionAnswers = Array(currentSession.cards.length).fill(null);
 
-  // Transition layouts
+  // Transition layouts with explicit inline display properties
   const entryCard = document.getElementById('entry-card');
   const reviewContainer = document.getElementById('review-container');
+  const completionContainer = document.getElementById('completion-container');
+
   if (entryCard) entryCard.style.display = 'none';
-  if (reviewContainer) reviewContainer.classList.add('visible');
+  if (completionContainer) {
+    completionContainer.style.display = 'none';
+    completionContainer.classList.remove('visible');
+  }
+  if (reviewContainer) {
+    reviewContainer.style.display = 'flex';
+    reviewContainer.classList.add('visible');
+  }
 
   const fab = document.getElementById('edubot-fab');
   if (fab) fab.style.display = 'flex';
@@ -452,7 +555,10 @@ function startReview(session) {
 
 // ── Render Flashcard in Reviewer ───────────────────────────
 function renderCard() {
-  if (!currentSession || !currentSession.cards[currentCardIndex]) return;
+  if (!currentSession || !currentSession.cards || !currentSession.cards[currentCardIndex]) {
+    currentSession = getDefaultSession();
+    currentCardIndex = 0;
+  }
 
   const total = currentSession.cards.length;
   const progressText = `Card ${currentCardIndex + 1} of ${total}`;
