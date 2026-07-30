@@ -3030,3 +3030,147 @@
   background: rgba(52, 168, 83, 0.18);
   transform: translateY(-1px);
 }
+
+/* ============================================================
+   Day 14: Class Leaderboard
+   ============================================================ */
+
+.leaderboard-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-top: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.leaderboard-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--yellow), var(--green-light), var(--yellow-light));
+}
+
+.leaderboard-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.leaderboard-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.leaderboard-empty {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  padding: 24px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+
+.leaderboard-table thead th {
+  font-family: 'Google Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.leaderboard-table tbody tr {
+  transition: background var(--transition);
+}
+
+.leaderboard-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.leaderboard-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.leaderboard-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.leaderboard-rank {
+  font-size: 1.1rem;
+  text-align: center;
+  min-width: 40px;
+}
+
+.leaderboard-name {
+  font-weight: 600;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.leaderboard-xp {
+  font-weight: 700;
+  color: var(--yellow-light);
+  font-family: 'Google Sans', sans-serif;
+}
+
+.leaderboard-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(52, 168, 83, 0.1);
+  border: 1px solid rgba(52, 168, 83, 0.2);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: 'Google Sans', sans-serif;
+  color: var(--green-light);
+  white-space: nowrap;
+}
+
+.leaderboard-table tbody tr.top-three:nth-child(1) {
+  background: rgba(251, 188, 4, 0.06);
+}
+
+.leaderboard-table tbody tr.top-three:nth-child(2) {
+  background: rgba(192, 192, 192, 0.05);
+}
+
+.leaderboard-table tbody tr.top-three:nth-child(3) {
+  background: rgba(205, 127, 50, 0.05);
+}
+
+.leaderboard-table tbody tr.top-three:hover {
+  background: var(--bg-hover);
+}
+
+/* ── Light theme leaderboard ── */
+[data-theme="light"] .leaderboard-xp {
+  color: var(--yellow-dark);
+}
+
+[data-theme="light"] .leaderboard-level-badge {
+  background: rgba(30, 142, 62, 0.08);
+  border-color: rgba(30, 142, 62, 0.2);
+  color: var(--green);
+}

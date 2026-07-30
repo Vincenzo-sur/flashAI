@@ -60,6 +60,7 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 10 UI Enhancements & Issues Fixes** — Centered Paste Transcript & Upload Notes layouts, 3D overlapping stacked card decks for Sessions and Drafts, Web Speech TTS read button fix, and Speed Sprint card percentage & 15s countdown timer fix (Day 10)
 - [x] **Day 11: AI Deck Customization, Interactive AI Tutor (EduBot) & Export/Import Suite** — AI parameters grid (Difficulty, Card Count, Format, Custom Focus), Single Card AI actions (✨ Reword & 💡 Detail), EduBot AI Tutor drawer on Student page with context-aware helper chips, Deck Export & Import (JSON, Anki CSV), Procedural QR Code & Share modal, and AI Class Synthesis Report (Day 11)
 - [x] **Day 11: Spaced Repetition, Student Analytics, Theme Switcher, Keyboard Shortcuts & Notifications** — Leitner box spaced repetition engine, student personal analytics dashboard with sparkline charts and study streaks, Dark/Light/Auto theme switcher, full keyboard navigation with `?` help overlay, and teacher notification center with bell badge (Day 11)
+- [x] **Day 14: Achievement & XP Leaderboard System, AI Adaptive Study Paths** — XP engine with 5 levels and 6 unlockable badges, animated level-up modal, class leaderboard in teacher Analytics, Gemini-powered personalized study path generator (Day 14)
 
 ---
 
@@ -193,6 +194,13 @@ cd flashAI
   - 🌡️ **Card Difficulty Heat-Map** — in Session Results, each card renders as a green/amber/red tile showing its class-wide wrong-answer rate; hover reveals question + wrong count tooltip.
   - 📈 **Student Progress Timeline** — animated dot-trace on completion screen showing each card as a green (correct) or red (wrong) dot linked by a gradient line, with per-dot hover tooltips.
   - 🧹 **QoL Fixes** — auto-scroll to panel top on sidebar tab switch, `data-tooltip` on all 5 study mode buttons, AI Remediation button purple gradient fixed on Teacher page.
+- [x] **Day 14: Achievement & XP Leaderboard System, AI Adaptive Study Paths**
+  - 🏆 **XP Engine & Level Progression** — awards XP per action (+10 correct answer, +5 "Know it" rating, +15 streak bonus, +25 high accuracy, +50 perfect score) with 5 rank levels (Novice → Scholar → Expert → Master → Grandmaster) and animated XP progress bar.
+  - 🎖️ **6 Unlockable Achievement Badges** — First Steps, Sharpshooter, On Fire, Speed Demon, Bookworm, Centurion with persistent tracking and glowing "NEW!" unlock tags.
+  - 🎉 **Animated Level-Up Celebration Modal** — glassmorphism popup with rank title, particle burst, and sound FX on level progression.
+  - 🧭 **AI Adaptive Study Path** — Gemini-powered personalized topic priority queue analyzing accuracy, review count, and Leitner overdue cards, with offline heuristic fallback.
+  - 🏆 **Teacher Class Leaderboard** — ranked table in Analytics Overview showing student XP, levels, session counts, and avg accuracy with medal indicators for top 3.
+
 
 
 ---

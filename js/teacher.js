@@ -978,6 +978,9 @@ function renderAnalytics() {
 
   // Day 13: refresh comparison dropdowns with current sessions
   populateCompareDropdowns();
+
+  // Day 14: render class leaderboard
+  renderClassLeaderboard();
 }
 
 
@@ -3218,4 +3221,100 @@ Return ONLY valid JSON. No markdown.`;
 
   btn.disabled = false;
   btn.innerHTML = '🔄 Regenerate Plan';
+}
+
+// ============================================================
+//  Day 14: Class Leaderboard
+// ============================================================
+
+function renderClassLeaderboard() {
+  const container = document.getElementById('leaderboard-table-container');
+  if (!container) return;
+
+  const sessions = window.EduStore.getSessions().filter(s => s.status !== 'draft');
+  const studentMap = {};
+
+  const LEVELS = [
+    { name: 'Novice', minXP: 0, emoji: '🌱' },
+    { name: 'Scholar', minXP: 100, emoji: '📖' },
+    { name: 'Expert', minXP: 300, emoji: '🎓' },
+    { name: 'Master', minXP: 600, emoji: '👑' },
+    { name: 'Grandmaster', minXP: 1000, emoji: '💎' }
+  ];
+
+  function getLevel(xp) {
+    let level = LEVELS[0];
+    for (const l of LEVELS) { if (xp >= l.minXP) level = l; }
+    return level;
+  }
+
+  sessions.forEach(session => {
+    (session.responses || []).forEach(resp => {
+      const sid = resp.studentId || 'Unknown';
+      if (!studentMap[sid]) studentMap[sid] = { name: sid, xp: 0, sessions: 0, totalCorrect: 0, totalCards: 0 };
+      const student = studentMap[sid];
+      student.sessions++;
+
+      let correct = 0, total = 0, streak = 0, streakBonus = 0;
+      (resp.cardResponses || []).forEach(cr => {
+        total++;
+        if (cr.isCorrect) {
+          correct++;
+          student.xp += 10;
+          streak++;
+          if (streak >= 3 && streak % 3 === 0) { streakBonus += 15; }
+        } else { streak = 0; }
+        if (cr.rating === 'know') student.xp += 5;
+      });
+
+      student.xp += streakBonus;
+      const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+      if (acc >= 80) student.xp += 25;
+      if (acc === 100) student.xp += 50;
+      student.totalCorrect += correct;
+      student.totalCards += total;
+    });
+  });
+
+  const students = Object.values(studentMap).sort((a, b) => b.xp - a.xp);
+
+  if (students.length === 0) {
+    container.innerHTML = '<p class="leaderboard-empty">No student submissions yet. Leaderboard will appear once students start reviewing.</p>';
+    return;
+  }
+
+  const rankIcons = ['🥇', '🥈', '🥉'];
+
+  container.innerHTML = `
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Student</th>
+          <th>XP</th>
+          <th>Level</th>
+          <th>Sessions</th>
+          <th>Avg Accuracy</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${students.map((s, i) => {
+          const level = getLevel(s.xp);
+          const avg = s.totalCards > 0 ? Math.round((s.totalCorrect / s.totalCards) * 100) : 0;
+          const rankDisplay = i < 3 ? rankIcons[i] : `${i + 1}`;
+          const accColor = avg >= 75 ? 'var(--green-light)' : avg >= 50 ? 'var(--yellow-light)' : '#f28b82';
+          return `
+            <tr class="${i < 3 ? 'top-three' : ''}">
+              <td class="leaderboard-rank">${rankDisplay}</td>
+              <td class="leaderboard-name">${escapeHTML(s.name)}</td>
+              <td class="leaderboard-xp">${s.xp.toLocaleString()}</td>
+              <td><span class="leaderboard-level-badge">${level.emoji} ${level.name}</span></td>
+              <td>${s.sessions}</td>
+              <td style="color:${accColor}; font-weight:600;">${avg}%</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
 }

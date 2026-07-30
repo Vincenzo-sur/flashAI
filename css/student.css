@@ -1196,4 +1196,361 @@
 }
 
 
+/* ============================================================
+   Day 14: XP Level Bar
+   ============================================================ */
+
+.xp-bar-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+
+.xp-level-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.xp-level-badge {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--yellow-light);
+}
+
+.xp-points-label {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.xp-bar-track {
+  width: 100%;
+  height: 10px;
+  background: var(--bg-hover);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--green), var(--green-light), var(--yellow));
+  transition: width 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+}
+
+.xp-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  border-radius: 0 5px 5px 0;
+}
+
+.xp-level-footer {
+  margin-top: 8px;
+  text-align: right;
+}
+
+.xp-next-level {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+
+/* ============================================================
+   Day 14: Achievement Badges Grid
+   ============================================================ */
+
+.achievements-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.achievement-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border-radius: var(--radius);
+  text-align: center;
+  transition: transform var(--transition), box-shadow var(--transition);
+  position: relative;
+}
+
+.achievement-badge.locked {
+  background: var(--bg-hover);
+  border: 1px dashed var(--border);
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.achievement-badge.unlocked {
+  background: rgba(52, 168, 83, 0.1);
+  border: 1px solid rgba(52, 168, 83, 0.25);
+}
+
+.achievement-badge.unlocked:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(52, 168, 83, 0.2);
+}
+
+.achievement-badge.newly-unlocked {
+  animation: badgeGlow 1.5s ease-in-out 2;
+  border-color: var(--yellow);
+  background: rgba(251, 188, 4, 0.12);
+}
+
+@keyframes badgeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 188, 4, 0); }
+  50%      { box-shadow: 0 0 18px 4px rgba(251, 188, 4, 0.35); }
+}
+
+.achievement-emoji {
+  font-size: 1.5rem;
+}
+
+.achievement-name {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.achievement-new-tag {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--yellow);
+  color: #000;
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: tagPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes tagPulse {
+  0%   { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+
+/* ============================================================
+   Day 14: Level-Up Celebration Modal
+   ============================================================ */
+
+.levelup-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease;
+  cursor: pointer;
+}
+
+.levelup-modal-content {
+  position: relative;
+  background: rgba(30, 30, 50, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 44px 48px;
+  text-align: center;
+  animation: levelUpBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+@keyframes levelUpBounce {
+  0%   { opacity: 0; transform: scale(0.5) translateY(40px); }
+  60%  { opacity: 1; transform: scale(1.05) translateY(-4px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+.levelup-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent, rgba(251, 188, 4, 0.15), transparent, rgba(52, 168, 83, 0.15), transparent);
+  animation: glowSpin 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes glowSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.levelup-emoji {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+  animation: levelUpPulse 0.8s ease-in-out infinite alternate;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes levelUpPulse {
+  0%   { transform: scale(1); }
+  100% { transform: scale(1.15); }
+}
+
+.levelup-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--yellow), var(--yellow-light), var(--green-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.levelup-rank {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.levelup-sub {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ============================================================
+   Day 14: AI Study Path
+   ============================================================ */
+
+.btn-study-path {
+  background: linear-gradient(135deg, #4285f4, #7c3aed);
+  color: #fff;
+  font-family: 'Google Sans', sans-serif;
+  font-weight: 600;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.btn-study-path:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(66, 133, 244, 0.3);
+}
+
+.btn-study-path:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.study-path-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.study-path-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.study-path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.study-path-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: transform var(--transition);
+}
+
+.study-path-item:hover {
+  transform: translateX(4px);
+}
+
+.study-path-rank {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+.study-path-body {
+  flex: 1;
+}
+
+.study-path-topic {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.study-path-reason {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.study-path-urgency {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Light theme overrides ── */
+[data-theme="light"] .levelup-modal-content {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .achievement-new-tag {
+  color: #333;
+}
 

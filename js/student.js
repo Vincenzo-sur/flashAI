@@ -136,6 +136,110 @@ const SoundFX = {
   }
 };
 
+// ============================================================
+//  Day 14: XP Engine & Achievement System
+// ============================================================
+
+const XPEngine = {
+  LEVELS: [
+    { name: 'Novice', minXP: 0, emoji: '🌱' },
+    { name: 'Scholar', minXP: 100, emoji: '📖' },
+    { name: 'Expert', minXP: 300, emoji: '🎓' },
+    { name: 'Master', minXP: 600, emoji: '👑' },
+    { name: 'Grandmaster', minXP: 1000, emoji: '💎' }
+  ],
+  STORE_KEY: 'ef_xp_data',
+
+  getStore() {
+    return JSON.parse(localStorage.getItem(this.STORE_KEY) || '{"xp":0,"history":[]}');
+  },
+  saveStore(store) {
+    localStorage.setItem(this.STORE_KEY, JSON.stringify(store));
+  },
+  awardXP(points, reason) {
+    const store = this.getStore();
+    const prevLevel = this.getLevel(store.xp);
+    store.xp += points;
+    store.history.push({ points, reason, date: new Date().toISOString() });
+    // keep only last 200 entries
+    if (store.history.length > 200) store.history = store.history.slice(-200);
+    this.saveStore(store);
+    const newLevel = this.getLevel(store.xp);
+    return { totalXP: store.xp, gained: points, leveledUp: newLevel.name !== prevLevel.name, newLevel, prevLevel };
+  },
+  getLevel(xp) {
+    let level = this.LEVELS[0];
+    for (const l of this.LEVELS) {
+      if (xp >= l.minXP) level = l;
+    }
+    return level;
+  },
+  getLevelProgress(xp) {
+    const current = this.getLevel(xp);
+    const idx = this.LEVELS.indexOf(current);
+    const next = this.LEVELS[idx + 1];
+    if (!next) return { current, next: null, progress: 100, currentXP: xp };
+    const range = next.minXP - current.minXP;
+    const into = xp - current.minXP;
+    return { current, next, progress: Math.min(100, Math.round((into / range) * 100)), currentXP: xp };
+  },
+  getTotalXP() {
+    return this.getStore().xp;
+  }
+};
+
+const AchievementTracker = {
+  STORE_KEY: 'ef_achievements',
+  BADGES: [
+    { id: 'first_steps', name: 'First Steps', emoji: '🏅', desc: 'Complete your first review', check: (ctx) => ctx.totalSessions >= 1 },
+    { id: 'sharpshooter', name: 'Sharpshooter', emoji: '🎯', desc: '3 sessions with ≥90% accuracy', check: (ctx) => ctx.highAccSessions >= 3 },
+    { id: 'on_fire', name: 'On Fire', emoji: '🔥', desc: '5-day study streak', check: (ctx) => ctx.streakDays >= 5 },
+    { id: 'speed_demon', name: 'Speed Demon', emoji: '⚡', desc: 'Speed Sprint with ≥70%', check: (ctx) => ctx.speedSuccess },
+    { id: 'bookworm', name: 'Bookworm', emoji: '📚', desc: 'Review 50+ cards total', check: (ctx) => ctx.totalCards >= 50 },
+    { id: 'centurion', name: 'Centurion', emoji: '💯', desc: 'Score a perfect 100%', check: (ctx) => ctx.hasPerfect }
+  ],
+
+  getUnlocked() {
+    return JSON.parse(localStorage.getItem(this.STORE_KEY) || '[]');
+  },
+  saveUnlocked(list) {
+    localStorage.setItem(this.STORE_KEY, JSON.stringify(list));
+  },
+  checkAndUnlock() {
+    const history = JSON.parse(localStorage.getItem('ef_review_history') || '[]');
+    const unlocked = this.getUnlocked();
+    const ctx = {
+      totalSessions: history.length,
+      highAccSessions: history.filter(h => h.accuracy >= 90).length,
+      streakDays: this._calcStreak(history),
+      speedSuccess: history.some(h => h.mode === 'speed' && h.accuracy >= 70),
+      totalCards: history.reduce((sum, h) => sum + (h.cardCount || 0), 0),
+      hasPerfect: history.some(h => h.accuracy === 100)
+    };
+
+    const newUnlocks = [];
+    for (const badge of this.BADGES) {
+      if (!unlocked.includes(badge.id) && badge.check(ctx)) {
+        unlocked.push(badge.id);
+        newUnlocks.push(badge);
+      }
+    }
+    this.saveUnlocked(unlocked);
+    return newUnlocks;
+  },
+  _calcStreak(history) {
+    const days = [...new Set(history.map(h => new Date(h.date).toDateString()))].sort((a,b) => new Date(b) - new Date(a));
+    if (days.length === 0) return 0;
+    let streak = 1;
+    for (let i = 0; i < days.length - 1; i++) {
+      const diff = (new Date(days[i]) - new Date(days[i+1])) / 86400000;
+      if (diff <= 1.5) streak++;
+      else break;
+    }
+    return streak;
+  }
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Day 6: init Firebase in background (no-op if no config)
   if (typeof window.EduStore !== 'undefined' && window.EduStore.initFirebase) {
@@ -472,6 +576,9 @@ function handleOptionSelection(optIndex, correctIndex) {
     rating: null // Filled on flip self-rating
   };
 
+  // Day 14: Award XP for correct answer
+  if (isCorrect) XPEngine.awardXP(10, 'Correct answer');
+
   // Render correct/wrong colors
   const optionElements = document.querySelectorAll('#review-options .mcq-option');
   optionElements.forEach((el, index) => {
@@ -506,6 +613,9 @@ function handleSelfRating(ratingType) {
   if (!currentAnswer) return;
 
   currentAnswer.rating = ratingType;
+
+  // Day 14: Award XP for confident rating
+  if (ratingType === 'know') XPEngine.awardXP(5, 'Know it rating');
 
   // Highlight selected button
   const ratingButtons = document.querySelectorAll('.rating-btn');
@@ -591,6 +701,25 @@ async function finishReview() {
 
   // Day 11: Analytics Dashboard
   saveAndRenderAnalytics(currentSession.id, accuracy, sessionAnswers, currentSession.cards);
+
+  // Day 14: XP bonuses and achievements
+  let xpResult = null;
+  let streak = 0;
+  sessionAnswers.forEach(ans => {
+    if (ans && ans.isCorrect) { streak++; if (streak >= 3 && streak % 3 === 0) xpResult = XPEngine.awardXP(15, 'Streak bonus'); }
+    else streak = 0;
+  });
+  if (accuracy >= 80) xpResult = XPEngine.awardXP(25, 'High accuracy bonus');
+  if (accuracy === 100) xpResult = XPEngine.awardXP(50, 'Perfect score!');
+
+  // Render XP bar and achievements
+  renderXPBar();
+  renderAchievementBadges();
+
+  // Check for level-up
+  const progress = XPEngine.getLevelProgress(XPEngine.getTotalXP());
+  // We check leveledUp from any of the xpResult calls
+  if (xpResult && xpResult.leveledUp) showLevelUpModal(xpResult.newLevel);
 
   // Day 6: show sync status, then submit (async)
   const syncEl = document.getElementById('sync-status');
@@ -794,6 +923,8 @@ function saveAndRenderAnalytics(sessionId, accuracy, answers, cards) {
     date: new Date().toISOString(),
     topicScores
   };
+  record.cardCount = cards.length;
+  record.mode = selectedStudyMode || 'standard';
   history.push(record);
   localStorage.setItem('ef_review_history', JSON.stringify(history));
   
@@ -1327,4 +1458,219 @@ function renderProgressTimeline() {
     }, 100);
   });
 }
+
+// ============================================================
+//  Day 14: XP Bar, Achievement Badges & Level-Up Modal
+// ============================================================
+
+function renderXPBar() {
+  const container = document.getElementById('xp-bar-container');
+  if (!container) return;
+  container.style.display = 'block';
+
+  const { current, next, progress, currentXP } = XPEngine.getLevelProgress(XPEngine.getTotalXP());
+
+  container.innerHTML = `
+    <div class="xp-level-header">
+      <span class="xp-level-badge">${current.emoji} ${current.name}</span>
+      <span class="xp-points-label">${currentXP} XP</span>
+    </div>
+    <div class="xp-bar-track">
+      <div class="xp-bar-fill" style="width:0%"></div>
+    </div>
+    <div class="xp-level-footer">
+      ${next ? `<span class="xp-next-level">${next.emoji} ${next.name} at ${next.minXP} XP</span>` : '<span class="xp-next-level">🏆 Max Level Reached!</span>'}
+    </div>
+  `;
+
+  // Animate fill
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const fill = container.querySelector('.xp-bar-fill');
+      if (fill) fill.style.width = progress + '%';
+    });
+  });
+}
+
+function renderAchievementBadges() {
+  const container = document.getElementById('achievements-grid');
+  if (!container) return;
+  container.style.display = 'grid';
+
+  const newUnlocks = AchievementTracker.checkAndUnlock();
+  const unlocked = AchievementTracker.getUnlocked();
+
+  container.innerHTML = AchievementTracker.BADGES.map(badge => {
+    const isUnlocked = unlocked.includes(badge.id);
+    const isNew = newUnlocks.some(b => b.id === badge.id);
+    return `
+      <div class="achievement-badge ${isUnlocked ? 'unlocked' : 'locked'} ${isNew ? 'newly-unlocked' : ''}" title="${badge.desc}">
+        <span class="achievement-emoji">${badge.emoji}</span>
+        <span class="achievement-name">${badge.name}</span>
+        ${isNew ? '<span class="achievement-new-tag">NEW!</span>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function showLevelUpModal(newLevel) {
+  const modal = document.getElementById('levelup-modal');
+  if (!modal) return;
+
+  document.getElementById('levelup-emoji').textContent = newLevel.emoji;
+  document.getElementById('levelup-rank').textContent = newLevel.name;
+
+  modal.style.display = 'flex';
+  SoundFX.playFanfare();
+
+  // Auto-close after 3.5 seconds
+  setTimeout(() => { modal.style.display = 'none'; }, 3500);
+
+  // Click to dismiss
+  modal.onclick = () => { modal.style.display = 'none'; };
+}
+
+// ============================================================
+//  Day 14: AI Adaptive Study Path
+// ============================================================
+
+async function generateAIStudyPath() {
+  const btn = document.getElementById('btn-study-path');
+  const container = document.getElementById('study-path-container');
+  if (!btn || !container) return;
+
+  btn.disabled = true;
+  btn.textContent = '🧭 Analyzing your performance...';
+  container.style.display = 'block';
+  container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.85rem;">⏳ Building your personalized study path…</div>';
+
+  const history = JSON.parse(localStorage.getItem('ef_review_history') || '[]');
+  const leitnerData = JSON.parse(localStorage.getItem('ef_spaced_data') || '{}');
+
+  // Build topic summary from history
+  const topicAgg = {};
+  history.forEach(h => {
+    Object.entries(h.topicScores || {}).forEach(([topic, data]) => {
+      if (!topicAgg[topic]) topicAgg[topic] = { correct: 0, total: 0, sessions: 0 };
+      topicAgg[topic].correct += data.correct;
+      topicAgg[topic].total += data.total;
+      topicAgg[topic].sessions++;
+    });
+  });
+
+  // Count overdue cards per topic from Leitner
+  const sessions = window.EduStore ? window.EduStore.getSessions() : [];
+  const topicOverdue = {};
+  Object.entries(leitnerData).forEach(([key, val]) => {
+    if (val.nextReview && new Date(val.nextReview) <= new Date()) {
+      // Find the card's topic
+      for (const sess of sessions) {
+        const card = (sess.cards || []).find(c => key.endsWith('_' + c.id));
+        if (card) {
+          const t = card.topic || 'General';
+          topicOverdue[t] = (topicOverdue[t] || 0) + 1;
+          break;
+        }
+      }
+    }
+  });
+
+  const topicSummary = Object.entries(topicAgg).map(([topic, data]) => ({
+    topic,
+    accuracy: Math.round((data.correct / data.total) * 100),
+    totalQuestions: data.total,
+    sessions: data.sessions,
+    overdueCards: topicOverdue[topic] || 0
+  }));
+
+  if (topicSummary.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim); font-size:0.85rem;">Complete a few more sessions to generate a study path.</div>';
+    btn.disabled = false;
+    btn.textContent = '🧭 Generate AI Study Path';
+    return;
+  }
+
+  const apiKey = window.EduStore ? window.EduStore.getApiKey() : null;
+
+  if (apiKey) {
+    try {
+      const prompt = `You are a learning analytics AI for a flashcard study app. A student has the following topic performance data:\n\n${JSON.stringify(topicSummary, null, 2)}\n\nBased on this data, generate a prioritized study path — a ranked list of the top ${Math.min(5, topicSummary.length)} topics this student should review next, ordered from most urgent to least.\n\nFor each topic, provide:\n- "rank": integer 1-5\n- "topic": topic name (exact match from data)\n- "reason": 1-sentence rationale combining accuracy, practice frequency, and overdue cards\n- "urgency": "high" | "medium" | "low"\n\nRespond with ONLY a JSON array. No markdown fences. Example:\n[{"rank":1,"topic":"Newton Laws","reason":"Low 40% accuracy with 3 overdue cards","urgency":"high"}]`;
+
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+
+      const data = await resp.json();
+      let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      // Strip markdown fences if present
+      text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const path = JSON.parse(text);
+      renderStudyPath(path);
+      btn.disabled = false;
+      btn.textContent = '🧭 Refresh AI Study Path';
+      return;
+    } catch (e) {
+      console.warn('AI Study Path error, falling back to heuristic:', e);
+    }
+  }
+
+  // Offline heuristic fallback
+  const heuristicPath = topicSummary
+    .map(t => ({
+      rank: 0,
+      topic: t.topic,
+      reason: `${t.accuracy}% accuracy across ${t.totalQuestions} questions${t.overdueCards > 0 ? `, ${t.overdueCards} overdue card${t.overdueCards > 1 ? 's' : ''}` : ''}`,
+      urgency: t.accuracy < 50 ? 'high' : t.accuracy < 75 ? 'medium' : 'low'
+    }))
+    .sort((a, b) => {
+      const urgencyOrder = { high: 0, medium: 1, low: 2 };
+      return (urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
+    })
+    .slice(0, 5)
+    .map((item, idx) => ({ ...item, rank: idx + 1 }));
+
+  renderStudyPath(heuristicPath);
+  btn.disabled = false;
+  btn.textContent = '🧭 Refresh AI Study Path';
+}
+
+function renderStudyPath(pathItems) {
+  const container = document.getElementById('study-path-container');
+  if (!container) return;
+
+  const urgencyColors = {
+    high: { bg: 'rgba(234,67,53,0.12)', border: 'rgba(234,67,53,0.3)', text: '#f28b82', label: '🔴 High' },
+    medium: { bg: 'rgba(251,188,4,0.12)', border: 'rgba(251,188,4,0.3)', text: 'var(--yellow-light)', label: '🟡 Medium' },
+    low: { bg: 'rgba(52,168,83,0.12)', border: 'rgba(52,168,83,0.3)', text: 'var(--green-light)', label: '🟢 Low' }
+  };
+
+  container.innerHTML = \`
+    <div class="study-path-title">🧭 Your Personalized Study Path</div>
+    <div class="study-path-list">
+      \${pathItems.map(item => {
+        const colors = urgencyColors[item.urgency] || urgencyColors.medium;
+        return \`
+          <div class="study-path-item" style="background:\${colors.bg}; border-color:\${colors.border};">
+            <div class="study-path-rank">#\${item.rank}</div>
+            <div class="study-path-body">
+              <div class="study-path-topic">\${escapeHTML(item.topic)}</div>
+              <div class="study-path-reason">\${escapeHTML(item.reason)}</div>
+            </div>
+            <span class="study-path-urgency" style="color:\${colors.text};">\${colors.label}</span>
+          </div>
+        \`;
+      }).join('')}
+    </div>
+  \`;
+}
+
+// Wire the study path button
+(function() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btn-study-path');
+    if (btn) btn.addEventListener('click', generateAIStudyPath);
+  });
+})();
 
