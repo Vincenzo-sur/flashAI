@@ -317,7 +317,16 @@ function initStudentEntry() {
   });
 
   function loadSessionsList(code) {
-    const sessions = window.EduStore.getSessions().filter(s => s.status === 'live');
+    let sessions = window.EduStore.getSessions().filter(s => s.status === 'live');
+    // Fallback: if no 'live' sessions exist, load all published/non-draft sessions so student can practice
+    if (sessions.length === 0) {
+      sessions = window.EduStore.getSessions().filter(s => s.status !== 'draft');
+    }
+    // Fallback 2: if still 0, load all available sessions
+    if (sessions.length === 0) {
+      sessions = window.EduStore.getSessions();
+    }
+
     optionsDiv.innerHTML = '';
 
     if (sessions.length === 0) {
@@ -359,6 +368,12 @@ function initStudentEntry() {
 
       optionsDiv.appendChild(option);
     });
+
+    // Auto-select first session option by default
+    const firstOption = optionsDiv.querySelector('.session-option');
+    if (firstOption) {
+      firstOption.click();
+    }
   }
 
   startBtn.addEventListener('click', () => {
