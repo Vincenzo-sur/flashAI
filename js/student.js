@@ -376,17 +376,36 @@ function initStudentEntry() {
     }
   }
 
-  startBtn.addEventListener('click', () => {
+  startBtn.addEventListener('click', (e) => {
+    if (e) e.preventDefault();
+    if (!selectedSessionId) {
+      const sessions = window.EduStore.getSessions();
+      if (sessions.length > 0) selectedSessionId = sessions[0].id;
+    }
     if (!selectedSessionId) return;
     const session = window.EduStore.getSessionById(selectedSessionId);
     if (session) {
       startReview(session);
     }
   });
+
+  // Auto-populate default code ef-2024 on load so student page is instantly ready
+  if (codeInput && !codeInput.value) {
+    codeInput.value = 'ef-2024';
+  }
+  if (codeInput) {
+    codeInput.dispatchEvent(new Event('input'));
+  }
 }
 
 // ── Start Review Flow ───────────────────────────────────────
 function startReview(session) {
+  if (!session) {
+    const allSessions = window.EduStore.getSessions();
+    if (allSessions.length > 0) session = allSessions[0];
+    else return;
+  }
+
   currentSession = JSON.parse(JSON.stringify(session));
 
   // Day 9: Smart Missed Cards filtering
@@ -405,15 +424,26 @@ function startReview(session) {
     }
   } else if (selectedStudyMode === 'spaced') {
     // Day 11: Spaced Repetition Mode
-    currentSession.cards = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
+    const due = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
+    if (due && due.length > 0) {
+      currentSession.cards = due;
+    }
+  }
+
+  // Safety fallback: if mode filtering resulted in 0 cards or session cards are missing, use session's original cards
+  if (!currentSession.cards || currentSession.cards.length === 0) {
+    currentSession.cards = JSON.parse(JSON.stringify(session.cards || []));
   }
 
   currentCardIndex = 0;
   sessionAnswers = Array(currentSession.cards.length).fill(null);
 
   // Transition layouts
-  document.getElementById('entry-card').style.display = 'none';
-  document.getElementById('review-container').classList.add('visible');
+  const entryCard = document.getElementById('entry-card');
+  const reviewContainer = document.getElementById('review-container');
+  if (entryCard) entryCard.style.display = 'none';
+  if (reviewContainer) reviewContainer.classList.add('visible');
+
   const fab = document.getElementById('edubot-fab');
   if (fab) fab.style.display = 'flex';
 
