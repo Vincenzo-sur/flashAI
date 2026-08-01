@@ -933,59 +933,63 @@ function getDefaultSession() {
 }
 
 // ── Start Review Flow ───────────────────────────────────────
-function startReview(session) {
+function startReview(session, resuming = false) {
   if (!session || !session.cards || session.cards.length === 0) {
     session = getDefaultSession();
   }
 
   currentSession = JSON.parse(JSON.stringify(session));
 
-  // Day 9: Smart Missed Cards filtering
-  if (selectedStudyMode === 'smart') {
-    const responses = currentSession.responses || [];
-    const missedCardIds = new Set();
-    responses.forEach(r => {
-      (r.cardResponses || []).forEach(cr => {
-        if (cr.rating === 'fuzzy' || cr.rating === 'nope' || !cr.isCorrect) {
-          missedCardIds.add(cr.cardId);
-        }
+  if (!resuming) {
+    // Day 9: Smart Missed Cards filtering
+    if (selectedStudyMode === 'smart') {
+      const responses = currentSession.responses || [];
+      const missedCardIds = new Set();
+      responses.forEach(r => {
+        (r.cardResponses || []).forEach(cr => {
+          if (cr.rating === 'fuzzy' || cr.rating === 'nope' || !cr.isCorrect) {
+            missedCardIds.add(cr.cardId);
+          }
+        });
       });
-    });
-    if (missedCardIds.size > 0) {
-      currentSession.cards = currentSession.cards.filter(c => missedCardIds.has(c.id));
-    }
-  } else if (selectedStudyMode === 'spaced') {
-    // Day 11: Spaced Repetition Mode
-    if (typeof SpacedRepetitionEngine !== 'undefined') {
-      const due = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
-      if (due && due.length > 0) {
-        currentSession.cards = due;
+      if (missedCardIds.size > 0) {
+        currentSession.cards = currentSession.cards.filter(c => missedCardIds.has(c.id));
+      }
+    } else if (selectedStudyMode === 'spaced') {
+      // Day 11: Spaced Repetition Mode
+      if (typeof SpacedRepetitionEngine !== 'undefined') {
+        const due = SpacedRepetitionEngine.getDueCards(currentSession.id, currentSession.cards);
+        if (due && due.length > 0) {
+          currentSession.cards = due;
+        }
+      }
+    } else if (selectedStudyMode === 'starred') {
+      // Day 15: Starred Cards Mode — review only your bookmarked cards
+      if (typeof StarredCards !== 'undefined') {
+        const starredIds = StarredCards.getIds(currentSession.id);
+        if (starredIds.length > 0) {
+          currentSession.cards = currentSession.cards.filter(c => starredIds.includes(c.id));
+        }
       }
     }
-  } else if (selectedStudyMode === 'starred') {
-    // Day 15: Starred Cards Mode — review only your bookmarked cards
-    if (typeof StarredCards !== 'undefined') {
-      const starredIds = StarredCards.getIds(currentSession.id);
-      if (starredIds.length > 0) {
-        currentSession.cards = currentSession.cards.filter(c => starredIds.includes(c.id));
-      }
+
+    // Safety fallback: if mode filtering resulted in 0 cards or session cards are missing, use session's original cards
+    if (!currentSession.cards || currentSession.cards.length === 0) {
+      currentSession.cards = JSON.parse(JSON.stringify(session.cards || getDefaultSession().cards));
     }
-  }
 
-  // Safety fallback: if mode filtering resulted in 0 cards or session cards are missing, use session's original cards
-  if (!currentSession.cards || currentSession.cards.length === 0) {
-    currentSession.cards = JSON.parse(JSON.stringify(session.cards || getDefaultSession().cards));
+    currentCardIndex = 0;
+    sessionAnswers = Array(currentSession.cards.length).fill(null);
   }
-
-  currentCardIndex = 0;
-  sessionAnswers = Array(currentSession.cards.length).fill(null);
 
   // Transition layouts with explicit inline display properties
   const entryCard = document.getElementById('entry-card');
   const reviewContainer = document.getElementById('review-container');
   const completionContainer = document.getElementById('completion-container');
+  const resumeBanner = document.getElementById('resume-banner');
 
   if (entryCard) entryCard.style.display = 'none';
+  if (resumeBanner) resumeBanner.style.display = 'none';
   if (completionContainer) {
     completionContainer.style.display = 'none';
     completionContainer.classList.remove('visible');
@@ -2614,44 +2618,7 @@ const SessionResume = {
   });
 })();
 
-// Patch startReview to handle resume (skip index reset when resuming)
-const _origStartReview = startReview;
-window._resumeMode = false;
-function startReview(session, resuming = false) {
-  if (resuming) {
-    // Don't reset cardIndex/sessionAnswers — they were already restored
-    if (!session || !session.cards || session.cards.length === 0) {
-      session = getDefaultSession();
-    }
 
-    currentSession = JSON.parse(JSON.stringify(session));
-
-    const entryCard = document.getElementById('entry-card');
-    const reviewContainer = document.getElementById('review-container');
-    const completionContainer = document.getElementById('completion-container');
-    const resumeBanner = document.getElementById('resume-banner');
-
-    if (entryCard) entryCard.style.display = 'none';
-    if (resumeBanner) resumeBanner.style.display = 'none';
-    if (completionContainer) {
-      completionContainer.style.display = 'none';
-      completionContainer.classList.remove('visible');
-    }
-    if (reviewContainer) {
-      reviewContainer.style.display = 'flex';
-      reviewContainer.classList.add('visible');
-    }
-
-    const fab = document.getElementById('edubot-fab');
-    if (fab) fab.style.display = 'flex';
-
-    renderCard();
-    return;
-  }
-
-  // Normal start — delegate to original logic
-  _origStartReview(session);
-}
 
 // ============================================================
 //  EduFlash AI — Day 16: Session Summary Card Grid
