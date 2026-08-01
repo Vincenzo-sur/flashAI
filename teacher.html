@@ -772,12 +772,23 @@
             </div>
           </div>
 
-          <!-- Day 14: Class Leaderboard -->
+          <!-- Day 14 & 15: Class Leaderboard & Real-World Perks -->
           <div class="leaderboard-section" id="leaderboard-section">
-            <div class="leaderboard-title">🏆 Class Leaderboard</div>
-            <div class="leaderboard-subtitle">Student rankings based on XP earned from quiz performance across all sessions</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:12px; gap:10px;">
+              <div>
+                <div class="leaderboard-title">🏆 Class Leaderboard & Real-World Perks</div>
+                <div class="leaderboard-subtitle">Track XP rankings and real-world competency perks qualified by students</div>
+              </div>
+              <div class="leaderboard-tab-toggle">
+                <button class="leaderboard-tab-btn active" id="btn-tab-leaderboard" type="button">🏆 XP Rankings</button>
+                <button class="leaderboard-tab-btn" id="btn-tab-perks" type="button">💼 Competencies & Perks</button>
+              </div>
+            </div>
             <div id="leaderboard-table-container">
               <p class="leaderboard-empty">No student submissions yet. Leaderboard will appear once students start reviewing.</p>
+            </div>
+            <div id="perks-matrix-container" style="display:none;">
+              <!-- Populated by JS -->
             </div>
           </div>
         </div>

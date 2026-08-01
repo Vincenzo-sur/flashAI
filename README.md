@@ -61,6 +61,8 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 11: AI Deck Customization, Interactive AI Tutor (EduBot) & Export/Import Suite** — AI parameters grid (Difficulty, Card Count, Format, Custom Focus), Single Card AI actions (✨ Reword & 💡 Detail), EduBot AI Tutor drawer on Student page with context-aware helper chips, Deck Export & Import (JSON, Anki CSV), Procedural QR Code & Share modal, and AI Class Synthesis Report (Day 11)
 - [x] **Day 11: Spaced Repetition, Student Analytics, Theme Switcher, Keyboard Shortcuts & Notifications** — Leitner box spaced repetition engine, student personal analytics dashboard with sparkline charts and study streaks, Dark/Light/Auto theme switcher, full keyboard navigation with `?` help overlay, and teacher notification center with bell badge (Day 11)
 - [x] **Day 14: Achievement & XP Leaderboard System, AI Adaptive Study Paths** — XP engine with 5 levels and 6 unlockable badges, animated level-up modal, class leaderboard in teacher Analytics, Gemini-powered personalized study path generator (Day 14)
+- [x] **Day 15: Purposeful Student Growth, Real-World Perks & Scenario Challenges** — Real-world competency tier mapping (Industry-Ready Master, Subject Lead, Practical Specialist), Real-World Perks Hub on student completion screen, Gemini AI-powered Real-World Scenario Challenge modal, and Teacher Real-World Perks & Competency Qualifications matrix tab (Day 15)
+- [x] **Day 16: Session State Resume & Visual Card Breakdown Grid** — Automatic session progress persistence to localStorage to resume unfinished reviews, top banner for 1-click session resume, and interactive color-coded card-by-card result breakdown grid on completion screen (Day 16)
 
 ---
 

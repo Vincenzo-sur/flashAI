@@ -3174,3 +3174,58 @@
   border-color: rgba(30, 142, 62, 0.2);
   color: var(--green);
 }
+
+/* ── Day 15: Leaderboard & Real-World Perks Tab Toggle & Perks Matrix ── */
+.leaderboard-tab-toggle {
+  display: inline-flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
+  gap: 4px;
+}
+.leaderboard-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.leaderboard-tab-btn:hover {
+  color: var(--text);
+}
+.leaderboard-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--green-light);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.perk-status-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+.perk-status-tag.awarded {
+  background: rgba(52,168,83,0.15);
+  color: var(--green-light);
+  border: 1px solid rgba(52,168,83,0.3);
+}
+.perk-status-tag.unlocked {
+  background: rgba(251,188,4,0.15);
+  color: var(--yellow-light);
+  border: 1px solid rgba(251,188,4,0.3);
+}
+.perk-status-tag.progress {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+

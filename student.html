@@ -32,11 +32,26 @@
     </div>
   </nav>
 
-  <!-- ── Student entry shell ── -->
+  <!-- Day 16: Resume Session Banner (hidden by default) -->
+  <div class="resume-banner" id="resume-banner" style="display:none;">
+    <div class="resume-banner-inner">
+      <span class="resume-banner-icon">🔄</span>
+      <div class="resume-banner-text">
+        <strong id="resume-session-label">Continue where you left off</strong>
+        <span id="resume-session-sub" style="font-size:0.75rem; color:var(--text-dim);">Session in progress</span>
+      </div>
+      <div class="resume-banner-actions">
+        <button class="btn btn-green btn-sm" id="resume-continue-btn">Resume →</button>
+        <button class="btn btn-ghost btn-sm" id="resume-discard-btn">Start Fresh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- —— Student entry shell —— -->
   <div class="student-shell" style="flex-direction: column; gap: 20px;">
     
     <div class="student-entry-card" id="entry-card">
-      <div class="entry-icon">🎒</div>
+      <div class="entry-icon">💼</div>
       <h1 class="entry-title">Ready to review?</h1>
       <p class="entry-sub">
         Enter your class code to find today's flashcard session and start reviewing.
@@ -70,7 +85,7 @@
             <!-- Day 11: Due cards badge -->
             <span class="due-badge" id="due-cards-badge" style="display:none;">0 cards due</span>
           </div>
-          <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:8px;">
+          <div class="study-mode-selector-grid">
             <button class="study-mode-btn active" data-mode="standard" data-tooltip="Classic review">
               <span style="font-size:1.1rem; display:block;">🎯</span>
               <span style="font-size:0.75rem; font-weight:600;">Standard</span>
@@ -90,8 +105,13 @@
             </button>
             <!-- Day 12: Voice Mode -->
             <button class="study-mode-btn" data-mode="voice" id="voice-mode-btn" data-tooltip="Hands-free voice" title="Answer questions by speaking">
-              <span style="font-size:1.1rem; display:block;">🎤</span>
+              <span style="font-size:1.1rem; display:block;">🎙️</span>
               <span style="font-size:0.75rem; font-weight:600;">Voice Mode</span>
+            </button>
+            <!-- Day 15: Starred Cards -->
+            <button class="study-mode-btn" data-mode="starred" data-tooltip="Your bookmarked cards only">
+              <span style="font-size:1.1rem; display:block;">⭐</span>
+              <span style="font-size:0.75rem; font-weight:600;">Starred</span>
             </button>
           </div>
         </div>
@@ -119,13 +139,18 @@
         </div>
       </div>
 
+      <!-- Day 15: Starred mode hint -->
+      <div class="starred-mode-hint" id="starred-mode-hint">
+        ⭐ Reviewing your starred cards only — tap ⭐ on any card to add or remove it.
+      </div>
+
       <!-- Day 12: Voice Mode Controls Panel -->
       <div class="voice-controls-wrap" id="voice-controls-wrap" style="display:none; margin-bottom:12px;">
         <div class="voice-controls-inner">
           <div class="voice-status-row">
             <div class="voice-mic-btn-wrap">
               <button id="mic-btn" class="mic-btn" title="Click to start / stop listening">
-                <span class="mic-icon">🎤</span>
+                <span class="mic-icon">🎙️</span>
                 <span class="mic-ring"></span>
                 <span class="mic-ring mic-ring-2"></span>
               </button>
@@ -157,13 +182,33 @@
       <div class="flashcard" id="review-flashcard">
         <!-- Header -->
         <div class="card-header" id="card-header-click" title="Click to flip">
-          <div style="display:flex; align-items:center; gap:8px;">
+          <div class="card-header-inner">
             <span class="card-header-label" id="card-label">Question</span>
             <button id="tts-read-btn" type="button" style="background:rgba(255,255,255,0.08); border:1px solid var(--border-light); color:var(--text); font-size:0.72rem; padding:2px 8px; border-radius:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Read aloud using Speech Synthesis">
               🔊 Read
             </button>
+            <!-- Day 15: Star a card -->
+            <button id="card-star-btn" class="card-icon-btn star-btn" type="button" title="Star this card (S)">
+              <span>⭐</span>
+              <span class="card-icon-btn-label">Star</span>
+            </button>
+            <!-- Day 15: Add a private note -->
+            <button id="card-note-btn" class="card-icon-btn note-btn" type="button" title="Add a private note (N)">
+              <span>📌</span>
+              <span class="card-icon-btn-label">Note</span>
+            </button>
           </div>
           <span class="card-header-tag" id="card-tag">Topic</span>
+        </div>
+
+        <!-- Day 15: Inline personal note editor -->
+        <div class="card-note-editor" id="card-note-editor">
+          <textarea id="card-note-textarea" maxlength="600" placeholder="Write a private study note for this card..."></textarea>
+          <div class="card-note-actions">
+            <button class="note-save-btn" id="card-note-save-btn" type="button">💾 Save Note</button>
+            <button class="note-cancel-btn" id="card-note-cancel-btn" type="button">Cancel</button>
+            <span class="note-saved-tag" id="card-note-saved-tag" style="display:none;">✓ Saved</span>
+          </div>
         </div>
 
         <!-- Body -->
@@ -231,6 +276,38 @@
         </div>
       </div>
 
+      <!-- Day 16: Session Summary Card Grid -->
+      <div class="session-summary-grid-wrap" id="session-summary-grid-wrap" style="display:none; width:100%; margin-bottom:16px;">
+        <div class="ssq-header">
+          <span class="ssq-title">📋 Card-by-Card Breakdown</span>
+          <span class="ssq-legend">
+            <span class="ssq-legend-dot" style="background:var(--green-light);"></span>Know&nbsp;
+            <span class="ssq-legend-dot" style="background:var(--yellow);"></span>Fuzzy&nbsp;
+            <span class="ssq-legend-dot" style="background:#f28b82;"></span>Missed
+          </span>
+        </div>
+        <div class="ssq-grid" id="ssq-grid">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <!-- Day 15: Study Proficiency Panel -->
+      <div id="proficiency-panel" style="width:100%; margin-bottom:16px;"></div>
+
+      <!-- Day 15: Real-World Perks & Competency Hub -->
+      <div class="perks-hub-card" id="perks-hub-card" style="display:none; width:100%; margin-bottom:16px;">
+        <div class="perks-hub-header">
+          <span style="font-size:1.3rem;">💼</span>
+          <div>
+            <div class="perks-hub-title">Real-World Competency & Perks</div>
+            <div class="perks-hub-subtitle">Connecting flashcard mastery to tangible practical value</div>
+          </div>
+        </div>
+        <div class="perks-hub-body" id="perks-hub-body">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
       <!-- Day 14: XP Level Bar -->
       <div class="xp-bar-container" id="xp-bar-container" style="display:none; width:100%; margin-bottom:16px;"></div>
 
@@ -250,8 +327,6 @@
           <span class="timeline-legend-item"><span class="timeline-legend-dot" style="background:#f28b82;"></span>Wrong</span>
         </div>
       </div>
-
-      <!-- Day 14: AI Adaptive Study Path -->
       <button class="btn btn-study-path" id="btn-study-path" style="width:100%; margin-bottom:12px;">🧭 Generate AI Study Path</button>
       <div class="study-path-container" id="study-path-container" style="display:none; width:100%; margin-bottom:20px;"></div>
 
@@ -296,10 +371,34 @@
       </div>
 
       <button class="btn btn-green entry-btn" id="exit-btn">
-        Done &amp; Exit
+        Done & Exit
       </button>
     </div>
 
+  </div>
+
+  <!-- Day 15: Focus Timer Widget -->
+  <div class="focus-timer-widget" id="focus-timer-widget" title="Focus timer">
+    <div class="focus-timer-mini">
+      <div class="focus-timer-ring-wrap">
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle class="focus-timer-ring-track" cx="28" cy="28" r="24"></circle>
+          <circle class="focus-timer-ring-progress" id="focus-timer-ring" cx="28" cy="28" r="24"></circle>
+        </svg>
+        <div class="focus-timer-time" id="focus-timer-time">15:00</div>
+      </div>
+      <span class="focus-timer-mini-label">Focus Timer</span>
+    </div>
+    <div class="focus-timer-body">
+      <div class="focus-timer-presets" id="focus-presets">
+        <!-- Preset buttons injected by JS -->
+      </div>
+      <div class="focus-timer-controls">
+        <button class="focus-main-btn" id="focus-main-btn">▶ Start Focus</button>
+        <button class="focus-reset-btn" id="focus-reset-btn" title="Reset timer">↺</button>
+      </div>
+      <div class="focus-timer-status" id="focus-timer-status"></div>
+    </div>
   </div>
 
   <!-- Day 11: EduBot AI Tutor Floating Action Trigger -->
@@ -332,7 +431,7 @@
       <!-- Quick Action Prompts -->
       <div class="edubot-quick-prompts">
         <button class="edubot-chip" data-prompt="Explain why the correct answer is right step-by-step">💡 Step-by-step</button>
-        <button class="edubot-chip" data-prompt="Give me a real-world analogy for this concept">🌍 Analogy</button>
+        <button class="edubot-chip" data-prompt="Give me a real-world analogy for this concept">🌐 Analogy</button>
         <button class="edubot-chip" data-prompt="Explain this concept like I'm 5 years old">🧒 ELI5</button>
         <button class="edubot-chip" data-prompt="Give me a quick practice follow-up question">❓ Quiz me</button>
       </div>
@@ -359,6 +458,8 @@
         <div class="shortcut-row"><span class="key-badge">K</span> Rate Know it</div>
         <div class="shortcut-row"><span class="key-badge">F</span> Rate Fuzzy</div>
         <div class="shortcut-row"><span class="key-badge">D</span> Rate Don't know</div>
+        <div class="shortcut-row"><span class="key-badge">S</span> Star / unstar card</div>
+        <div class="shortcut-row"><span class="key-badge">N</span> Add / edit card note</div>
         <div class="shortcut-row"><span class="key-badge">?</span> Show this help</div>
         <div class="shortcut-row"><span class="key-badge">Esc</span> Close overlays</div>
       </div>
@@ -373,6 +474,34 @@
       <div class="levelup-title">LEVEL UP!</div>
       <div class="levelup-rank" id="levelup-rank">Scholar</div>
       <div class="levelup-sub">Keep going to unlock the next rank!</div>
+    </div>
+  </div>
+
+  <!-- Day 15: Real-World Scenario Challenge Modal -->
+  <div class="scenario-modal-overlay" id="scenario-modal-overlay" style="display:none;">
+    <div class="scenario-modal-content">
+      <div class="scenario-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">🎯</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);" id="scenario-title">Real-World Application Challenge</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);" id="scenario-topic-tag">Topic: Practical Physics</span>
+          </div>
+        </div>
+        <button class="scenario-close-btn" id="scenario-close-btn">&times;</button>
+      </div>
+      <div class="scenario-body" id="scenario-body">
+        <div class="scenario-question-box" id="scenario-question-box">
+          Loading scenario challenge...
+        </div>
+        <div class="scenario-options-grid" id="scenario-options-grid">
+          <!-- Populated by JS -->
+        </div>
+        <div class="scenario-feedback" id="scenario-feedback" style="display:none;"></div>
+      </div>
+      <div class="scenario-footer">
+        <button class="btn btn-outline btn-sm" id="scenario-dismiss-btn">Close</button>
+      </div>
     </div>
   </div>
 

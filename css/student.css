@@ -181,6 +181,105 @@
   border-radius: 4px;
 }
 
+/* ── Day 15: Card icon buttons (star + note) ── */
+.card-header .card-header-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.card-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.card-icon-btn:hover {
+  background: rgba(255,255,255,0.16);
+  border-color: rgba(255,255,255,0.35);
+}
+.card-icon-btn:active { transform: scale(0.92); }
+
+.card-icon-btn.star-btn.starred {
+  background: rgba(251,188,4,0.22);
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+.card-icon-btn.note-btn.has-note {
+  background: rgba(52,168,83,0.25);
+  border-color: var(--green-light);
+  color: var(--green-light);
+}
+
+/* ── Day 15: Inline note editor ── */
+.card-note-editor {
+  display: none;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(52,168,83,0.06);
+  animation: fadeIn 0.25s ease;
+}
+.card-note-editor.open { display: block; }
+.card-note-editor textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: 'Roboto', sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 8px 10px;
+  outline: none;
+  margin-bottom: 8px;
+}
+.card-note-editor textarea:focus { border-color: var(--green-light); }
+.card-note-editor textarea::placeholder { color: var(--text-dim); }
+.card-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.note-save-btn {
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-family: 'Google Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.note-save-btn:hover { background: var(--green-light); }
+.note-cancel-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+  padding: 5px 10px;
+}
+.note-cancel-btn:hover { color: var(--text); }
+.note-saved-tag {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--green-light);
+  font-weight: 600;
+  animation: fadeIn 0.3s ease;
+}
+
 .card-body {
   padding: 24px 20px;
 }
@@ -1553,4 +1652,530 @@
 [data-theme="light"] .achievement-new-tag {
   color: #333;
 }
+
+
+/* ============================================================
+   Day 15: Starred Cards, Personal Notes & Focus Timer
+   ============================================================ */
+
+/* ── Day 15: Study mode grid — 6 buttons in 2 rows of 3 ── */
+.study-mode-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* ── Day 15: Focus Timer Floating Widget ──────────────────── */
+.focus-timer-widget {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 850;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+  width: 96px;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.3s ease;
+  cursor: pointer;
+  user-select: none;
+}
+.focus-timer-widget.expanded {
+  width: 280px;
+  box-shadow: 0 16px 48px rgba(52,168,83,0.25);
+}
+
+.focus-timer-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+.focus-timer-mini-label {
+  display: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: 'Google Sans', sans-serif;
+}
+.focus-timer-widget.expanded .focus-timer-mini-label {
+  display: block;
+}
+
+.focus-timer-ring-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+.focus-timer-ring-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 5;
+}
+.focus-timer-ring-progress {
+  fill: none;
+  stroke: var(--green-light);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s linear, stroke 0.3s ease;
+}
+.focus-timer-ring-progress.running {
+  stroke: var(--yellow);
+}
+.focus-timer-ring-progress.break {
+  stroke: #4285f4;
+}
+.focus-timer-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.focus-timer-body {
+  display: none;
+  padding: 0 14px 14px;
+  gap: 10px;
+  flex-direction: column;
+}
+.focus-timer-widget.expanded .focus-timer-body {
+  display: flex;
+}
+
+.focus-timer-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.focus-preset-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.focus-preset-btn:hover {
+  border-color: var(--green-light);
+  color: var(--text);
+}
+.focus-preset-btn.active {
+  background: rgba(52,168,83,0.14);
+  border-color: var(--green-light);
+  color: var(--green-light);
+}
+
+.focus-timer-controls {
+  display: flex;
+  gap: 6px;
+}
+.focus-main-btn {
+  flex: 1;
+  background: var(--green);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.focus-main-btn:hover { background: var(--green-light); }
+.focus-main-btn.running {
+  background: var(--yellow);
+  color: #202124;
+}
+.focus-main-btn.running:hover { background: var(--yellow-light); }
+.focus-main-btn.break {
+  background: #1967d2;
+}
+.focus-main-btn.break:hover { background: #4285f4; }
+
+.focus-reset-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  width: 38px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.focus-reset-btn:hover {
+  border-color: #d93025;
+  color: #f28b82;
+}
+
+.focus-timer-status {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.4;
+  min-height: 14px;
+}
+.focus-timer-status.done {
+  color: var(--green-light);
+  font-weight: 600;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Focus timer under 480px: collapse to icon-only chip */
+@media (max-width: 480px) {
+  .focus-timer-widget {
+    bottom: 16px;
+    left: 16px;
+    width: 64px;
+    border-radius: 50%;
+  }
+  .focus-timer-ring-wrap { width: 48px; height: 48px; }
+  .focus-timer-time { font-size: 0.66rem; }
+  .focus-timer-mini { padding: 8px; }
+  .focus-timer-widget.expanded {
+    width: 240px;
+    border-radius: 16px;
+  }
+}
+
+/* ── Light theme overrides ── */
+[data-theme="light"] .focus-timer-widget {
+  background: #ffffff;
+  border-color: #dadce0;
+}
+[data-theme="light"] .focus-preset-btn {
+  background: #f1f3f4;
+}
+
+/* ── Starred filter hint bar (shown in review when in starred mode) ── */
+.starred-mode-hint {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  background: rgba(251,188,4,0.08);
+  border: 1px dashed rgba(251,188,4,0.35);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 0.74rem;
+  color: var(--yellow);
+  animation: fadeIn 0.3s ease;
+}
+.starred-mode-hint.visible { display: flex; }
+
+/* ── Day 15: Real-World Perks & Scenario Modal ── */
+.perks-hub-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: left;
+}
+.perks-hub-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.perks-hub-title {
+  font-family: 'Google Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--green-light);
+}
+.perks-hub-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.perks-badge-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.perks-competency-pill, .perks-accuracy-pill {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.perks-pill-icon { font-size: 1.3rem; }
+.perks-pill-title { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.perks-pill-desc { font-size: 0.72rem; color: var(--text-dim); }
+.perks-unlocked-box {
+  background: rgba(52,168,83,0.06);
+  border: 1px solid rgba(52,168,83,0.25);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.perk-unlocked-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--green-light);
+  margin-bottom: 8px;
+}
+.perk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.perk-item:last-child { margin-bottom: 0; }
+.perk-icon { font-size: 0.9rem; }
+
+/* Scenario Challenge Modal */
+.scenario-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.scenario-modal-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 520px;
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.scenario-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.scenario-close-btn {
+  background: none; border: none; font-size: 1.4rem; color: var(--text-dim); cursor: pointer;
+}
+.scenario-close-btn:hover { color: var(--text); }
+.scenario-question-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.scenario-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.scenario-opt-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.scenario-opt-btn:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--bg-hover);
+}
+.scenario-feedback {
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+.scenario-feedback.success {
+  background: rgba(52,168,83,0.12);
+  border: 1px solid rgba(52,168,83,0.3);
+  color: var(--green-light);
+}
+.scenario-feedback.fail {
+  background: rgba(234,67,53,0.12);
+  border: 1px solid rgba(234,67,53,0.3);
+  color: #f28b82;
+}
+.scenario-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+/* ── Day 16: Resume Session Banner ── */
+.resume-banner {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  animation: slideDown 0.3s ease;
+}
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.resume-banner-inner {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.resume-banner-icon { font-size: 1.5rem; }
+.resume-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+.resume-banner-text strong {
+  font-size: 0.88rem;
+  color: var(--text);
+  font-family: 'Google Sans', sans-serif;
+}
+.resume-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Day 16: Session Summary Card Grid ── */
+.session-summary-grid-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: left;
+}
+.ssq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.ssq-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Google Sans', sans-serif;
+}
+.ssq-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+.ssq-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 2px;
+}
+.ssq-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ssq-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: default;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease;
+}
+.ssq-pill:hover { transform: translateY(-2px); }
+.ssq-pill:hover .ssq-pill-tooltip { display: block; }
+
+/* Colour variants */
+.ssq-pill-know {
+  background: rgba(52,168,83,0.15);
+  border-color: rgba(52,168,83,0.35);
+  color: var(--green-light);
+}
+.ssq-pill-fuzzy {
+  background: rgba(251,188,4,0.12);
+  border-color: rgba(251,188,4,0.3);
+  color: var(--yellow-light, #fdd663);
+}
+.ssq-pill-fuzzy-wrong {
+  background: rgba(251,140,4,0.12);
+  border-color: rgba(251,140,4,0.3);
+  color: #ffb74d;
+}
+.ssq-pill-missed {
+  background: rgba(234,67,53,0.12);
+  border-color: rgba(234,67,53,0.3);
+  color: #f28b82;
+}
+
+.ssq-pill-num {
+  font-size: 0.65rem;
+  opacity: 0.7;
+  font-weight: 400;
+}
+.ssq-pill-icon { font-size: 0.78rem; }
+
+/* Hover tooltip */
+.ssq-pill-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  width: 220px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  text-align: left;
+  pointer-events: none;
+}
+.ssq-tooltip-q {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.ssq-tooltip-topic {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+.ssq-tooltip-result {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 

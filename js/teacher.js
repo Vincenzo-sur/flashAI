@@ -3280,6 +3280,7 @@ function renderClassLeaderboard() {
 
   if (students.length === 0) {
     container.innerHTML = '<p class="leaderboard-empty">No student submissions yet. Leaderboard will appear once students start reviewing.</p>';
+    renderRealWorldPerksMatrix([]);
     return;
   }
 
@@ -3317,4 +3318,88 @@ function renderClassLeaderboard() {
       </tbody>
     </table>
   `;
+
+  renderRealWorldPerksMatrix(students);
 }
+
+function renderRealWorldPerksMatrix(students) {
+  const container = document.getElementById('perks-matrix-container');
+  if (!container) return;
+
+  if (students.length === 0) {
+    container.innerHTML = '<p class="leaderboard-empty">No student perks calculated yet.</p>';
+    return;
+  }
+
+  function getPerkInfo(xp, avgAcc) {
+    if (xp >= 1000) return { tier: 'Industry-Ready Master', perk: '👑 TA Nomination & Internship Endorsement', status: 'Awarded' };
+    if (xp >= 600) return { tier: 'Subject Lead', perk: '🎓 Peer Tutor Lead & Workshop Presenter', status: 'Awarded' };
+    if (xp >= 300) return { tier: 'Practical Specialist', perk: '🎯 Real-World Scenario Challenge Unlocked', status: 'Unlocked' };
+    if (xp >= 100) return { tier: 'Applied Analyst', perk: '📚 Extended Resource Library Access', status: 'Unlocked' };
+    return { tier: 'Novice Explorer', perk: '🌱 Foundations in progress', status: 'In Progress' };
+  }
+
+  container.innerHTML = `
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Competency Tier</th>
+          <th>Qualified Practical Perk</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${students.map(s => {
+          const avg = s.totalCards > 0 ? Math.round((s.totalCorrect / s.totalCards) * 100) : 0;
+          const info = getPerkInfo(s.xp, avg);
+          return `
+            <tr>
+              <td class="leaderboard-name">${escapeHTML(s.name)}</td>
+              <td><span class="leaderboard-level-badge">${escapeHTML(info.tier)}</span></td>
+              <td style="font-size:0.83rem; color:var(--text-muted);">${escapeHTML(info.perk)}</td>
+              <td>
+                <span class="perk-status-tag ${info.status === 'Awarded' ? 'awarded' : info.status === 'Unlocked' ? 'unlocked' : 'progress'}">
+                  ${info.status}
+                </span>
+              </td>
+              <td>
+                <button class="btn btn-outline btn-sm perk-grant-btn" style="padding:4px 8px; font-size:0.75rem;" onclick="showToast('Granted perk for ${escapeHTML(s.name)}! 🎓', 'success')">
+                  Grant Perk
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// Wire perks & leaderboard tab toggles
+(function initPerksTabs() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnLead = document.getElementById('btn-tab-leaderboard');
+    const btnPerks = document.getElementById('btn-tab-perks');
+    const leadBox = document.getElementById('leaderboard-table-container');
+    const perksBox = document.getElementById('perks-matrix-container');
+
+    if (btnLead && btnPerks && leadBox && perksBox) {
+      btnLead.addEventListener('click', () => {
+        btnLead.classList.add('active');
+        btnPerks.classList.remove('active');
+        leadBox.style.display = 'block';
+        perksBox.style.display = 'none';
+      });
+
+      btnPerks.addEventListener('click', () => {
+        btnPerks.classList.add('active');
+        btnLead.classList.remove('active');
+        leadBox.style.display = 'none';
+        perksBox.style.display = 'block';
+      });
+    }
+  });
+})();
+

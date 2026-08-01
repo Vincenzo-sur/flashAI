@@ -240,12 +240,467 @@ const AchievementTracker = {
   }
 };
 
+// ============================================================
+//  Day 15: Starred Cards — personal bookmarks per session
+// ============================================================
+const StarredCards = {
+  STORE_KEY: 'ef_starred_cards',
+  getStore() {
+    return JSON.parse(localStorage.getItem(this.STORE_KEY) || '{}');
+  },
+  saveStore(store) {
+    localStorage.setItem(this.STORE_KEY, JSON.stringify(store));
+  },
+  /** @returns {string[]} card ids starred in the given session */
+  getIds(sessionId) {
+    const store = this.getStore();
+    return Array.isArray(store[sessionId]) ? store[sessionId] : [];
+  },
+  isStarred(sessionId, cardId) {
+    return this.getIds(sessionId).includes(cardId);
+  },
+  toggle(sessionId, cardId) {
+    const store = this.getStore();
+    const ids = Array.isArray(store[sessionId]) ? store[sessionId] : [];
+    const idx = ids.indexOf(cardId);
+    if (idx === -1) ids.push(cardId);
+    else ids.splice(idx, 1);
+    store[sessionId] = ids;
+    this.saveStore(store);
+    return this.isStarred(sessionId, cardId);
+  },
+  getCount(sessionId) {
+    return this.getIds(sessionId).length;
+  }
+};
+
+// ============================================================
+//  Day 15: Personal Notes — private study notes per card
+// ============================================================
+const CardNotes = {
+  STORE_KEY: 'ef_card_notes',
+  getStore() {
+    return JSON.parse(localStorage.getItem(this.STORE_KEY) || '{}');
+  },
+  saveStore(store) {
+    localStorage.setItem(this.STORE_KEY, JSON.stringify(store));
+  },
+  getNote(sessionId, cardId) {
+    const store = this.getStore();
+    return store[`${sessionId}_${cardId}`] || '';
+  },
+  setNote(sessionId, cardId, text) {
+    const store = this.getStore();
+    const key = `${sessionId}_${cardId}`;
+    if (text && text.trim()) store[key] = text.trim();
+    else delete store[key];
+    this.saveStore(store);
+  }
+};
+
+// ============================================================
+//  Day 15: Study Proficiency — academic progression from
+//  focus minutes + mastered cards (no reward spam)
+// ============================================================
+const StudyProficiency = {
+  STORE_KEY: 'ef_proficiency',
+  LEVELS: [
+    { name: 'Foundations', minPoints: 0,     icon: '🌱', color: '#9aa0a6' },
+    { name: 'Developing',  minPoints: 120,   icon: '📘', color: '#4285f4' },
+    { name: 'Proficient',  minPoints: 360,   icon: '📗', color: '#34a853' },
+    { name: 'Advanced',    minPoints: 720,   icon: '📕', color: '#f29900' },
+    { name: 'Master',      minPoints: 1200,  icon: '🎓', color: '#d93025' }
+  ],
+  // Points: 1 per study minute, +3 per mastered card (correct + Know it)
+  MINUTE_POINTS: 1,
+  MASTERED_CARD_POINTS: 3,
+
+  getStore() {
+    return JSON.parse(localStorage.getItem(this.STORE_KEY) || '{"points":0,"totalMinutes":0,"masteredCards":0,"history":[]}');
+  },
+  saveStore(store) {
+    localStorage.setItem(this.STORE_KEY, JSON.stringify(store));
+  },
+  getLevel(points) {
+    let level = this.LEVELS[0];
+    for (const l of this.LEVELS) {
+      if (points >= l.minPoints) level = l;
+    }
+    return level;
+  },
+  getLevelProgress(points) {
+    const current = this.getLevel(points);
+    const idx = this.LEVELS.indexOf(current);
+    const next = this.LEVELS[idx + 1];
+    if (!next) return { current, next: null, progress: 100, points };
+    const range = next.minPoints - current.minPoints;
+    const into = points - current.minPoints;
+    return { current, next, progress: Math.min(100, Math.round((into / range) * 100)), points };
+  },
+  addMinutes(mins) {
+    if (!mins || mins < 1) return null;
+    const store = this.getStore();
+    const prevLevel = this.getLevel(store.points);
+    store.totalMinutes += mins;
+    store.points += mins * this.MINUTE_POINTS;
+    store.history.push({ type: 'focus', value: mins, date: new Date().toISOString() });
+    if (store.history.length > 300) store.history = store.history.slice(-300);
+    this.saveStore(store);
+    const newLevel = this.getLevel(store.points);
+    return { leveledUp: newLevel.name !== prevLevel.name, newLevel, prevLevel, points: store.points };
+  },
+  addMasteredCard() {
+    const store = this.getStore();
+    const prevLevel = this.getLevel(store.points);
+    store.masteredCards++;
+    store.points += this.MASTERED_CARD_POINTS;
+    store.history.push({ type: 'mastered', value: 1, date: new Date().toISOString() });
+    if (store.history.length > 300) store.history = store.history.slice(-300);
+    this.saveStore(store);
+    const newLevel = this.getLevel(store.points);
+    return { leveledUp: newLevel.name !== prevLevel.name, newLevel, prevLevel, points: store.points };
+  }
+};
+
+// ============================================================
+//  Day 15: Note editor + Proficiency panel renderers
+// ============================================================
+function toggleNoteEditor(card) {
+  const editor = document.getElementById('card-note-editor');
+  if (!editor) return;
+  const isOpen = editor.classList.contains('open');
+  editor.classList.toggle('open', !isOpen);
+  if (!isOpen) {
+    const textarea = document.getElementById('card-note-textarea');
+    if (textarea && currentSession) {
+      textarea.value = CardNotes.getNote(currentSession.id, card.id);
+    }
+  }
+}
+
+function saveCardNote() {
+  if (!currentSession) return;
+  const textarea = document.getElementById('card-note-textarea');
+  const editor = document.getElementById('card-note-editor');
+  if (!textarea || !editor) return;
+  const card = currentSession.cards[currentCardIndex];
+  CardNotes.setNote(currentSession.id, card.id, textarea.value);
+  const noteBtn = document.getElementById('card-note-btn');
+  if (noteBtn) noteBtn.classList.toggle('has-note', textarea.value.trim().length > 0);
+  const savedTag = document.getElementById('card-note-saved-tag');
+  if (savedTag) savedTag.style.display = 'inline';
+  setTimeout(() => { editor.classList.remove('open'); }, 600);
+}
+
+function cancelNoteEditor() {
+  const editor = document.getElementById('card-note-editor');
+  if (editor) editor.classList.remove('open');
+}
+
+function renderProficiencyPanel() {
+  const container = document.getElementById('proficiency-panel');
+  if (!container) return;
+  const store = StudyProficiency.getStore();
+  const progress = StudyProficiency.getLevelProgress(store.points);
+  const level = progress.current;
+  const nextLabel = progress.next ? `${progress.next.name} at ${progress.next.minPoints} pts` : 'Max level reached';
+  container.innerHTML = `
+    <div class="proficiency-panel-header">
+      <span class="proficiency-icon">${level.icon}</span>
+      <div>
+        <div class="proficiency-title">Study Proficiency</div>
+        <div class="proficiency-level-name">${level.name}</div>
+      </div>
+      <span class="proficiency-points">${store.points} pts</span>
+    </div>
+    <div class="proficiency-bar-track">
+      <div class="proficiency-bar-fill" style="width:${progress.progress}%; background:${level.color};"></div>
+    </div>
+    <div class="proficiency-stats">
+      <span>⏱ ${store.totalMinutes} min focused</span>
+      <span>✅ ${store.masteredCards} cards mastered</span>
+      <span>🎯 ${nextLabel}</span>
+    </div>
+  `;
+}
+
+// ============================================================
+//  Day 15: Focus Timer — Pomodoro-style floating widget
+// ============================================================
+const FocusTimer = {
+  PRESETS: [ { label: '5m',  minutes: 5,  breakMin: 1 },
+             { label: '15m', minutes: 15, breakMin: 2 },
+             { label: '25m', minutes: 25, breakMin: 5 },
+             { label: '45m', minutes: 45, breakMin: 10 } ],
+  interval: null,
+  totalSeconds: 0,
+  secondsLeft: 0,
+  isRunning: false,
+  isBreak: false,
+  completedFocusSeconds: 0,
+  selectedPreset: null,
+  CIRCUMFERENCE: 2 * Math.PI * 24, // ring radius = 24 (56/2 - 4)
+
+  init() {
+    if (!document.getElementById('focus-timer-widget')) return;
+
+    // Restore last completed focus time from storage
+    try {
+      const prof = StudyProficiency.getStore();
+      this.completedFocusSeconds = prof.totalMinutes * 60;
+    } catch (e) {}
+
+    const preset = this.PRESETS[1]; // default 15m
+    this.selectedPreset = preset;
+    this.totalSeconds = preset.minutes * 60;
+    this.secondsLeft = this.totalSeconds;
+
+    const ring = document.getElementById('focus-timer-ring');
+    const timeEl = document.getElementById('focus-timer-time');
+    if (ring) {
+      ring.style.strokeDasharray = this.CIRCUMFERENCE;
+      ring.style.strokeDashoffset = 0;
+    }
+    if (timeEl) timeEl.textContent = this._format(this.secondsLeft);
+
+    this._renderPresets();
+
+    // Widget interactions
+    const widget = document.getElementById('focus-timer-widget');
+    widget.addEventListener('click', (e) => {
+      // Don't collapse when clicking inside controls
+      if (e.target.closest('.focus-timer-body')) return;
+      widget.classList.toggle('expanded');
+    });
+
+    const mainBtn = document.getElementById('focus-main-btn');
+    mainBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    const resetBtn = document.getElementById('focus-reset-btn');
+    resetBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.reset();
+    });
+  },
+
+  _renderPresets() {
+    const container = document.getElementById('focus-presets');
+    if (!container) return;
+    container.innerHTML = '';
+    this.PRESETS.forEach((preset, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'focus-preset-btn';
+      if (this.selectedPreset && this.selectedPreset.minutes === preset.minutes) btn.classList.add('active');
+      btn.textContent = preset.label;
+      btn.dataset.index = i;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectPreset(i);
+      });
+      container.appendChild(btn);
+    });
+  },
+
+  selectPreset(index) {
+    const preset = this.PRESETS[index];
+    if (!preset) return;
+    this.stop();
+    this.selectedPreset = preset;
+    this.isBreak = false;
+    this.totalSeconds = preset.minutes * 60;
+    this.secondsLeft = this.totalSeconds;
+    this._updateRing(0);
+    this._updateTime();
+    this._setButtonText();
+    this._setStatus('');
+    this._renderPresets();
+  },
+
+  toggle() {
+    if (this.isRunning) this.pause();
+    else this.start();
+  },
+
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    const ring = document.getElementById('focus-timer-ring');
+    if (ring) {
+      ring.classList.remove('break');
+      if (this.isBreak) ring.classList.add('break');
+      else ring.classList.add('running');
+    }
+    this._setButtonText();
+    this._setStatus(this.isBreak ? '☕ Break — rest a moment' : '🎯 Focus session in progress');
+    this.interval = setInterval(() => this._tick(), 1000);
+  },
+
+  pause() {
+    this.isRunning = false;
+    this._clearInterval();
+    const ring = document.getElementById('focus-timer-ring');
+    if (ring) ring.classList.remove('running', 'break');
+    this._setButtonText();
+    this._setStatus('⏸ Paused');
+  },
+
+  reset() {
+    this.stop();
+    this.isBreak = false;
+    this.secondsLeft = this.totalSeconds;
+    this._updateRing(0);
+    this._updateTime();
+    this._setStatus('');
+  },
+
+  stop() {
+    this.isRunning = false;
+    this._clearInterval();
+    const ring = document.getElementById('focus-timer-ring');
+    if (ring) ring.classList.remove('running', 'break');
+  },
+
+  _tick() {
+    this.secondsLeft--;
+    if (this.secondsLeft <= 0) {
+      this._handleComplete();
+      return;
+    }
+    const elapsed = this.totalSeconds - this.secondsLeft;
+    this._updateRing(elapsed / this.totalSeconds);
+    this._updateTime();
+  },
+
+  _handleComplete() {
+    this._clearInterval();
+    this.isRunning = false;
+
+    if (!this.isBreak) {
+      // Focus session finished — bank the minutes
+      const focusMinutes = this.totalSeconds / 60;
+      this.completedFocusSeconds += this.totalSeconds;
+      try {
+        const result = StudyProficiency.addMinutes(focusMinutes);
+        if (result && result.leveledUp) {
+          this._showLevelUp(result.newLevel, result.points);
+        }
+      } catch (e) {}
+
+      const statusEl = document.getElementById('focus-timer-status');
+      if (statusEl) {
+        statusEl.className = 'focus-timer-status done';
+        statusEl.textContent = `✅ ${focusMinutes} min focused — proficiency updated`;
+      }
+      TTSManager.speak('Focus session complete. Well done!');
+
+      // Auto-switch to break
+      const breakMin = this.selectedPreset ? this.selectedPreset.breakMin : 5;
+      this.isBreak = true;
+      this.totalSeconds = breakMin * 60;
+      this.secondsLeft = this.totalSeconds;
+      this._updateRing(0);
+      this._updateTime();
+      this._setButtonText();
+      const ring = document.getElementById('focus-timer-ring');
+      if (ring) {
+        ring.classList.remove('running');
+        ring.classList.add('break');
+      }
+      this.isRunning = true;
+      this.interval = setInterval(() => this._tick(), 1000);
+      this._setStatus('☕ Break — rest a moment');
+    } else {
+      // Break over — back to focus
+      this.isBreak = false;
+      this.totalSeconds = this.selectedPreset ? this.selectedPreset.minutes * 60 : 900;
+      this.secondsLeft = this.totalSeconds;
+      this._updateRing(0);
+      this._updateTime();
+      this._setButtonText();
+      this._setStatus('Focus break finished — ready when you are');
+    }
+  },
+
+  _updateRing(progress) {
+    const ring = document.getElementById('focus-timer-ring');
+    if (!ring) return;
+    const offset = this.CIRCUMFERENCE * Math.min(1, Math.max(0, progress));
+    ring.style.strokeDashoffset = String(offset);
+  },
+
+  _updateTime() {
+    const timeEl = document.getElementById('focus-timer-time');
+    if (timeEl) timeEl.textContent = this._format(this.secondsLeft);
+  },
+
+  _setButtonText() {
+    const btn = document.getElementById('focus-main-btn');
+    if (!btn) return;
+    btn.className = 'focus-main-btn';
+    if (this.isBreak) btn.classList.add('break');
+    else if (this.isRunning) btn.classList.add('running');
+    btn.textContent = this.isBreak
+      ? (this.isRunning ? '⏸ Pause Break' : '▶ Resume Break')
+      : (this.isRunning ? '⏸ Pause' : '▶ Start Focus');
+  },
+
+  _setStatus(text) {
+    const statusEl = document.getElementById('focus-timer-status');
+    if (!statusEl) return;
+    if (text) {
+      statusEl.className = 'focus-timer-status';
+      statusEl.textContent = text;
+    } else {
+      statusEl.textContent = '';
+    }
+  },
+
+  _clearInterval() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+  },
+
+  _format(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  },
+
+  _showLevelUp(newLevel, points) {
+    const existing = document.getElementById('proficiency-levelup-modal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'proficiency-levelup-modal';
+    modal.className = 'proficiency-levelup-overlay';
+    modal.innerHTML = `
+      <div class="proficiency-levelup-content">
+        <div class="proficiency-levelup-icon">${newLevel.icon}</div>
+        <div class="proficiency-levelup-kicker">New proficiency reached</div>
+        <div class="proficiency-levelup-rank">${newLevel.name}</div>
+        <div class="proficiency-levelup-sub">Keep studying consistently to reach the next stage.</div>
+        <button class="btn btn-green btn-sm" id="proficiency-levelup-close">Continue</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', () => modal.remove());
+    modal.querySelector('#proficiency-levelup-close').addEventListener('click', () => modal.remove());
+    TTSManager.speak(`You reached the ${newLevel.name} level.`);
+  }
+};
+
 function setupStudentApp() {
   initStudentEntry();
   initReviewControls();
   checkUrlParams();
   initEduBotTutor(); // Day 11
   initKeyboardShortcuts(); // Day 11
+  FocusTimer.init(); // Day 15
+  renderProficiencyPanel(); // Day 15
 
   // Day 6: init Firebase in background without blocking UI
   if (typeof window.EduStore !== 'undefined' && window.EduStore.initFirebase) {
@@ -327,107 +782,92 @@ function initStudentEntry() {
   });
 
   function loadSessionsList(code) {
-    let sessions = [];
+    let allSessions = [];
     try {
       if (window.EduStore && typeof window.EduStore.getSessions === 'function') {
-        sessions = window.EduStore.getSessions() || [];
+        allSessions = window.EduStore.getSessions() || [];
       }
     } catch (e) {
       console.warn("EduStore error:", e);
     }
 
-    // Filter live or non-draft sessions
-    let liveSessions = sessions.filter(s => s.status === 'live');
-    if (liveSessions.length > 0) sessions = liveSessions;
-    else {
-      let published = sessions.filter(s => s.status !== 'draft');
-      if (published.length > 0) sessions = published;
+    if (allSessions.length === 0) {
+      allSessions = [getDefaultSession()];
     }
 
-    // Fallback default session if store returned empty array
-    if (sessions.length === 0) {
-      sessions = [{
-        id: 'session-1',
-        subject: 'Physics',
-        topic: "Newton's Laws of Motion",
-        date: new Date().toISOString().split('T')[0],
-        status: 'live',
-        cards: [
-          {
-            id: 'card-1-1',
-            question: "Which of Newton's laws states that an object at rest stays at rest unless acted on by an external force?",
-            options: ["Newton's Second Law", "Newton's First Law", "Newton's Third Law", "Law of Gravitation"],
-            correctIndex: 1,
-            answer: "Newton's First Law of Motion, also called the Law of Inertia — objects resist changes to their state of motion.",
-            topic: "Inertia"
-          },
-          {
-            id: 'card-1-2',
-            question: "What does F = ma represent in classical mechanics?",
-            options: ["Force equals mass times acceleration", "Frequency equals mass times area", "Force equals momentum times angle", "None of the above"],
-            correctIndex: 0,
-            answer: "Newton's Second Law: Force (F) equals mass (m) multiplied by acceleration (a). It describes how a net force changes an object's motion.",
-            topic: "Force & Acceleration"
-          },
-          {
-            id: 'card-1-3',
-            question: "Newton's Third Law states that every action has an equal and opposite...",
-            options: ["Velocity", "Momentum", "Reaction", "Energy"],
-            correctIndex: 2,
-            answer: "Every action has an equal and opposite reaction.",
-            topic: "Action-Reaction"
-          }
-        ]
-      }];
+    const searchTerm = (code || '').trim().toLowerCase();
+    let filtered = allSessions;
+
+    if (searchTerm && searchTerm !== 'ef-2024' && searchTerm.length > 0) {
+      filtered = allSessions.filter(s => 
+        (s.topic && s.topic.toLowerCase().includes(searchTerm)) ||
+        (s.subject && s.subject.toLowerCase().includes(searchTerm)) ||
+        (s.courseName && s.courseName.toLowerCase().includes(searchTerm))
+      );
+      if (filtered.length === 0) filtered = allSessions;
     }
+
+    const activeSessions = filtered.filter(s => s.status !== 'draft');
+    const finalSessions = activeSessions.length > 0 ? activeSessions : filtered;
 
     if (optionsDiv) {
       optionsDiv.innerHTML = '';
 
-      sessions.forEach((sess, idx) => {
+      finalSessions.forEach((sess, idx) => {
         const option = document.createElement('div');
-        option.className = `session-option ${idx === 0 ? 'selected' : ''}`;
-        option.dataset.id = sess.id;
-        option.innerHTML = `
-          <div class="session-option-left">
-            <div class="session-topic">${escapeHTML(sess.topic)}</div>
-            <div class="session-date">${sess.subject} · ${sess.date}</div>
-          </div>
-          <span class="session-cards-count">${(sess.cards || []).length} cards</span>
-        `;
+        const isSelected = selectedSessionId ? (sess.id === selectedSessionId) : (idx === 0);
+        if (isSelected) selectedSessionId = sess.id;
 
-        option.addEventListener('click', () => {
-          document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-          option.classList.add('selected');
-          selectedSessionId = sess.id;
-          if (startBtn) startBtn.disabled = false;
-          
-          try {
-            const dueBadge = document.getElementById('due-cards-badge');
-            if (dueBadge && typeof SpacedRepetitionEngine !== 'undefined') {
-              const dueCount = SpacedRepetitionEngine.getDueCount(sess.id, sess.cards);
+        option.className = `session-option ${isSelected ? 'selected' : ''}`;
+        option.dataset.id = sess.id;
+        option.style.cursor = 'pointer';
+        option.innerHTML = `
+          <div class="session-option-left" style="pointer-events:none;">
+            <div class="session-topic" style="font-weight:600; color:var(--text);">${escapeHTML(sess.topic || 'Untitled Session')}</div>
+            <div class="session-date" style="font-size:0.75rem; color:var(--text-dim);">${sess.subject || 'General'} · ${sess.date || 'Today'}</div>
+          </div>
+          <span class="session-cards-count" style="pointer-events:none; font-size:0.75rem; color:var(--green-light); font-weight:600;">${(sess.cards || []).length} cards</span>
+        `;
+        optionsDiv.appendChild(option);
+      });
+
+      // Rock-solid event delegation for session selection
+      optionsDiv.onclick = (e) => {
+        const cardOption = e.target.closest('.session-option');
+        if (!cardOption) return;
+        const targetId = cardOption.dataset.id;
+        if (!targetId) return;
+
+        document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
+        cardOption.classList.add('selected');
+        selectedSessionId = targetId;
+
+        if (startBtn) {
+          startBtn.disabled = false;
+          startBtn.removeAttribute('disabled');
+        }
+
+        try {
+          const dueBadge = document.getElementById('due-cards-badge');
+          if (dueBadge && typeof SpacedRepetitionEngine !== 'undefined') {
+            const targetSess = finalSessions.find(s => s.id === targetId);
+            if (targetSess) {
+              const dueCount = SpacedRepetitionEngine.getDueCount(targetSess.id, targetSess.cards);
               dueBadge.textContent = `${dueCount} card${dueCount !== 1 ? 's' : ''} due`;
               dueBadge.style.display = 'inline-block';
             }
-          } catch(e) {}
-        });
-
-        optionsDiv.appendChild(option);
-      });
+          }
+        } catch(err) {}
+      };
     }
 
-    // Auto-select first session & enable start button
-    selectedSessionId = sessions[0].id;
-    if (startBtn) startBtn.disabled = false;
-
-    try {
-      const dueBadge = document.getElementById('due-cards-badge');
-      if (dueBadge && typeof SpacedRepetitionEngine !== 'undefined') {
-        const dueCount = SpacedRepetitionEngine.getDueCount(sessions[0].id, sessions[0].cards);
-        dueBadge.textContent = `${dueCount} card${dueCount !== 1 ? 's' : ''} due`;
-        dueBadge.style.display = 'inline-block';
-      }
-    } catch(e) {}
+    if (!selectedSessionId && finalSessions.length > 0) {
+      selectedSessionId = finalSessions[0].id;
+    }
+    if (startBtn) {
+      startBtn.disabled = false;
+      startBtn.removeAttribute('disabled');
+    }
   }
 
   // Load sessions immediately on page init
@@ -522,6 +962,14 @@ function startReview(session) {
         currentSession.cards = due;
       }
     }
+  } else if (selectedStudyMode === 'starred') {
+    // Day 15: Starred Cards Mode — review only your bookmarked cards
+    if (typeof StarredCards !== 'undefined') {
+      const starredIds = StarredCards.getIds(currentSession.id);
+      if (starredIds.length > 0) {
+        currentSession.cards = currentSession.cards.filter(c => starredIds.includes(c.id));
+      }
+    }
   }
 
   // Safety fallback: if mode filtering resulted in 0 cards or session cards are missing, use session's original cards
@@ -594,6 +1042,37 @@ function renderCard() {
       const speechText = `${card.question}. Options: ${card.options.join(', ')}`;
       TTSManager.speak(speechText);
     };
+  }
+
+  // Day 15: Sync star + note button states with the current card
+  const starBtn = document.getElementById('card-star-btn');
+  if (starBtn) {
+    starBtn.classList.toggle('starred', StarredCards.isStarred(currentSession.id, card.id));
+    starBtn.onclick = () => {
+      const nowStarred = StarredCards.toggle(currentSession.id, card.id);
+      starBtn.classList.toggle('starred', nowStarred);
+      starBtn.querySelector('.card-icon-btn-label').textContent = nowStarred ? 'Starred' : 'Star';
+      const hintEl = document.getElementById('starred-mode-hint');
+      if (hintEl) hintEl.classList.remove('visible');
+    };
+  }
+
+  const noteBtn = document.getElementById('card-note-btn');
+  if (noteBtn) {
+    const hasNote = CardNotes.getNote(currentSession.id, card.id).length > 0;
+    noteBtn.classList.toggle('has-note', hasNote);
+    noteBtn.onclick = () => toggleNoteEditor(card);
+  }
+
+  const noteEditor = document.getElementById('card-note-editor');
+  if (noteEditor) {
+    noteEditor.classList.remove('open');
+    const noteTextarea = document.getElementById('card-note-textarea');
+    if (noteTextarea) {
+      noteTextarea.value = CardNotes.getNote(currentSession.id, card.id);
+    }
+    const savedTag = document.getElementById('card-note-saved-tag');
+    if (savedTag) savedTag.style.display = 'none';
   }
 
   // Handle Speed Challenge Timer
@@ -779,10 +1258,21 @@ function handleSelfRating(ratingType) {
 
   // Enable Next button
   document.getElementById('review-next-btn').disabled = false;
+
+  // Day 16: Persist resume state after each self-rating
+  SessionResume.save();
   
   // Day 11: Save to Spaced Repetition Engine
   if (currentSession) {
     SpacedRepetitionEngine.updateCard(currentSession.id, currentSession.cards[currentCardIndex].id, ratingType);
+  }
+
+  // Day 15: A card counts as "mastered" when answered correctly AND rated Know it
+  if (currentSession && currentAnswer.isCorrect && ratingType === 'know') {
+    try {
+      const result = StudyProficiency.addMasteredCard();
+      if (result && result.leveledUp) FocusTimer._showLevelUp(result.newLevel, result.points);
+    } catch (e) {}
   }
 }
 
@@ -811,7 +1301,7 @@ function initReviewControls() {
   });
 
   exitBtn.addEventListener('click', () => {
-    // Reload exit
+    SessionResume.clear(); // Day 16: clear resume on deliberate exit
     window.location.reload();
   });
 }
@@ -835,9 +1325,24 @@ async function finishReview() {
     cardResponses: sessionAnswers
   };
 
+  // Day 16: Clear resume state on finish
+  SessionResume.clear();
+
+  // Clean up timers and voice recognition on finish
+  stopSpeedTimer();
+  if (typeof VoiceQuizEngine !== 'undefined') VoiceQuizEngine.stop();
+
   // Switch panels immediately — don't wait for Firestore write
-  document.getElementById('review-container').classList.remove('visible');
-  document.getElementById('completion-container').classList.add('visible');
+  const reviewContainer = document.getElementById('review-container');
+  const completionContainer = document.getElementById('completion-container');
+  if (reviewContainer) {
+    reviewContainer.style.display = 'none';
+    reviewContainer.classList.remove('visible');
+  }
+  if (completionContainer) {
+    completionContainer.style.display = 'flex';
+    completionContainer.classList.add('visible');
+  }
 
   // Day 9: Sound & Confetti celebration
   SoundFX.playFanfare();
@@ -1536,6 +2041,10 @@ Return ONLY valid JSON. No markdown, no explanations.`;
       }
       // Day 13: render the progress timeline
       renderProgressTimeline();
+      // Day 15: render Real-World Perks Hub
+      if (typeof renderRealWorldPerksHub === 'function') renderRealWorldPerksHub();
+      // Day 16: render Session Summary Grid
+      if (typeof renderSessionSummaryGrid === 'function') renderSessionSummaryGrid();
     }
   });
   mo.observe(completionContainer, { attributes: true, attributeFilter: ['class','style'], childList: true });
@@ -1797,24 +2306,24 @@ function renderStudyPath(pathItems) {
     low: { bg: 'rgba(52,168,83,0.12)', border: 'rgba(52,168,83,0.3)', text: 'var(--green-light)', label: '🟢 Low' }
   };
 
-  container.innerHTML = \`
+  container.innerHTML = `
     <div class="study-path-title">🧭 Your Personalized Study Path</div>
     <div class="study-path-list">
-      \${pathItems.map(item => {
+      ${pathItems.map(item => {
         const colors = urgencyColors[item.urgency] || urgencyColors.medium;
-        return \`
-          <div class="study-path-item" style="background:\${colors.bg}; border-color:\${colors.border};">
-            <div class="study-path-rank">#\${item.rank}</div>
+        return `
+          <div class="study-path-item" style="background:${colors.bg}; border-color:${colors.border};">
+            <div class="study-path-rank">#${item.rank}</div>
             <div class="study-path-body">
-              <div class="study-path-topic">\${escapeHTML(item.topic)}</div>
-              <div class="study-path-reason">\${escapeHTML(item.reason)}</div>
+              <div class="study-path-topic">${escapeHTML(item.topic)}</div>
+              <div class="study-path-reason">${escapeHTML(item.reason)}</div>
             </div>
-            <span class="study-path-urgency" style="color:\${colors.text};">\${colors.label}</span>
+            <span class="study-path-urgency" style="color:${colors.text};">${colors.label}</span>
           </div>
-        \`;
+        `;
       }).join('')}
     </div>
-  \`;
+  `;
 }
 
 // Wire the study path button
@@ -1824,4 +2333,378 @@ function renderStudyPath(pathItems) {
     if (btn) btn.addEventListener('click', generateAIStudyPath);
   });
 })();
+
+// ============================================================
+//  EduFlash AI — Day 15: Real-World Competencies, Perks & Scenario Challenges
+// ============================================================
+
+const RealWorldPerksEngine = {
+  getCompetencyTier(xp) {
+    if (xp >= 1000) return { name: 'Industry-Ready Master', badge: '💎 Master Analyst', perk: 'Qualified for Industry Internship & Class TA Nomination' };
+    if (xp >= 600)  return { name: 'Subject Lead', badge: '👑 Subject Specialist', perk: 'Peer Tutor & Senior Study Lead Eligible' };
+    if (xp >= 300)  return { name: 'Practical Specialist', badge: '🎓 Applied Practitioner', perk: 'Real-World Case Study Unlocked' };
+    if (xp >= 100)  return { name: 'Applied Analyst', badge: '📖 Concept Practitioner', perk: 'Bonus Resource Access Unlocked' };
+    return { name: 'Novice Explorer', badge: '🌱 Foundations Explorer', perk: 'Build your streak to unlock perks' };
+  }
+};
+
+function renderRealWorldPerksHub() {
+  const container = document.getElementById('perks-hub-card');
+  const body = document.getElementById('perks-hub-body');
+  if (!container || !body) return;
+
+  const totalXP = (typeof XPEngine !== 'undefined') ? XPEngine.getTotalXP() : 150;
+  const tier = RealWorldPerksEngine.getCompetencyTier(totalXP);
+  
+  const total = sessionAnswers.length;
+  const correct = sessionAnswers.filter(a => a.isCorrect).length;
+  const accuracyPct = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const topic = (currentSession && currentSession.topic) ? currentSession.topic : 'General Concept';
+
+  container.style.display = 'block';
+
+  body.innerHTML = `
+    <div class="perks-badge-row">
+      <div class="perks-competency-pill">
+        <span class="perks-pill-icon">🏅</span>
+        <div>
+          <div class="perks-pill-title">${tier.name}</div>
+          <div class="perks-pill-desc">${tier.badge}</div>
+        </div>
+      </div>
+      <div class="perks-accuracy-pill">
+        <span class="perks-pill-icon">🎯</span>
+        <div>
+          <div class="perks-pill-title">${accuracyPct}% Mastery</div>
+          <div class="perks-pill-desc">${accuracyPct >= 75 ? 'Perks Qualified' : 'Practice to Upgrade'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="perks-unlocked-box">
+      <div class="perk-unlocked-title">🎁 Current Perks & Credentials:</div>
+      <div class="perk-item">
+        <span class="perk-icon">✨</span>
+        <div class="perk-detail">
+          <strong>Classroom Perk:</strong> ${tier.perk}
+        </div>
+      </div>
+      <div class="perk-item">
+        <span class="perk-icon">📜</span>
+        <div class="perk-detail">
+          <strong>Skill Credential:</strong> Verified Competency in <em>${escapeHTML(topic)}</em>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button class="btn btn-green btn-sm" id="btn-launch-scenario" style="width:100%; font-size:0.85rem; padding:10px;">
+        🎯 Launch Real-World Scenario Challenge →
+      </button>
+    </div>
+  `;
+
+  document.getElementById('btn-launch-scenario')?.addEventListener('click', () => {
+    openScenarioChallenge(topic);
+  });
+}
+
+async function openScenarioChallenge(topic) {
+  const overlay = document.getElementById('scenario-modal-overlay');
+  const qBox = document.getElementById('scenario-question-box');
+  const grid = document.getElementById('scenario-options-grid');
+  const feedback = document.getElementById('scenario-feedback');
+  const closeBtn = document.getElementById('scenario-close-btn');
+  const dismissBtn = document.getElementById('scenario-dismiss-btn');
+  const topicTag = document.getElementById('scenario-topic-tag');
+
+  if (!overlay || !qBox || !grid) return;
+
+  if (topicTag) topicTag.textContent = `Topic: ${topic || 'General Practice'}`;
+  qBox.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-muted);">⏳ Generating real-world scenario from your flashcard topic...</div>';
+  grid.innerHTML = '';
+  if (feedback) feedback.style.display = 'none';
+
+  overlay.style.display = 'flex';
+
+  const closeHandler = () => { overlay.style.display = 'none'; };
+  if (closeBtn) closeBtn.onclick = closeHandler;
+  if (dismissBtn) dismissBtn.onclick = closeHandler;
+
+  const apiKey = window.EduStore ? window.EduStore.getApiKey() : null;
+
+  let scenarioData = null;
+
+  if (apiKey) {
+    try {
+      const cardContext = (currentSession && currentSession.cards) ? currentSession.cards.map(c => c.question).join('; ') : topic;
+      const prompt = `You are a practical learning AI. Generate a real-world scenario application question based on the topic "${topic}" and these concepts: "${cardContext}".
+Provide:
+- "scenario": a 2-sentence real-world problem scenario (e.g. engineering, industry, medical, or daily life application).
+- "question": 1 practical question asking how to apply the concept.
+- "options": array of 3 options (A, B, C).
+- "correctIndex": integer (0, 1, or 2).
+- "explanation": 1-2 sentence real-world explanation of why it works in practice.
+
+Return ONLY valid JSON. No markdown fences. Example:
+{"scenario":"An engineer is designing a high-speed vehicle braking system.","question":"Which physical parameter must be minimized to reduce stopping distance?","options":["Vehicle inertia","Tire surface friction","Braking delay"],"correctIndex":2,"explanation":"Minimizing system response latency directly shortens total stopping distance under high-speed operation."}`;
+
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+
+      const resData = await resp.json();
+      let raw = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      scenarioData = JSON.parse(raw);
+    } catch (err) {
+      console.warn('Gemini scenario generation fallback:', err);
+    }
+  }
+
+  if (!scenarioData) {
+    scenarioData = {
+      scenario: `You are an engineering consultant evaluating a real-world system operational test for "${topic || 'Physics & Systems'}".`,
+      question: `In practical field execution, how do you ensure optimum stability and energy transfer?`,
+      options: [
+        "Calibrate system response using measured empirical data",
+        "Ignore environmental friction and assume 100% efficiency",
+        "Operate at maximum frequency without feedback controls"
+      ],
+      correctIndex: 0,
+      explanation: "Empirical calibration and feedback loops are essential for real-world system optimization."
+    };
+  }
+
+  qBox.innerHTML = `
+    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:8px; line-height:1.5;">💼 <strong>Scenario:</strong> ${escapeHTML(scenarioData.scenario)}</div>
+    <div style="font-weight:600; color:var(--text); font-size:0.92rem; font-family:'Google Sans',sans-serif;">❓ <strong>Question:</strong> ${escapeHTML(scenarioData.question)}</div>
+  `;
+
+  grid.innerHTML = scenarioData.options.map((opt, i) => `
+    <button class="scenario-opt-btn" data-idx="${i}">${String.fromCharCode(65 + i)}. ${escapeHTML(opt)}</button>
+  `).join('');
+
+  grid.querySelectorAll('.scenario-opt-btn').forEach(btn => {
+    btn.onclick = () => {
+      const selected = parseInt(btn.dataset.idx, 10);
+      const isCorrect = selected === scenarioData.correctIndex;
+
+      grid.querySelectorAll('.scenario-opt-btn').forEach((b, idx) => {
+        b.disabled = true;
+        if (idx === scenarioData.correctIndex) {
+          b.style.borderColor = 'var(--green)';
+          b.style.background = 'rgba(52,168,83,0.15)';
+        } else if (idx === selected && !isCorrect) {
+          b.style.borderColor = 'var(--red-light)';
+          b.style.background = 'rgba(234,67,53,0.15)';
+        }
+      });
+
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.className = `scenario-feedback ${isCorrect ? 'success' : 'fail'}`;
+        feedback.innerHTML = `
+          <strong>${isCorrect ? '🎉 Correct Real-World Application!' : '💡 Learning Opportunity'}</strong><br/>
+          ${escapeHTML(scenarioData.explanation)}
+          ${isCorrect ? '<br/><span style="color:var(--yellow-light); font-size:0.8rem; display:inline-block; margin-top:6px;">🌟 Real-World Competency Point Earned!</span>' : ''}
+        `;
+      }
+
+      if (isCorrect && typeof SoundFX !== 'undefined') SoundFX.playFanfare();
+    };
+  });
+}
+
+// ============================================================
+//  EduFlash AI — Day 16: Session Resume Persistence
+//  Saves progress to localStorage so students can pick up
+//  where they left off if they close the tab mid-session.
+// ============================================================
+
+const SessionResume = {
+  KEY: 'ef_resume_state',
+
+  save() {
+    if (!currentSession) return;
+    const state = {
+      sessionId: currentSession.id,
+      cardIndex: currentCardIndex,
+      answers: sessionAnswers,
+      mode: selectedStudyMode,
+      savedAt: new Date().toISOString(),
+      sessionMeta: { topic: currentSession.topic, subject: currentSession.subject }
+    };
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(state));
+    } catch (e) {}
+  },
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  },
+
+  clear() {
+    localStorage.removeItem(this.KEY);
+  },
+
+  hasResumable() {
+    const s = this.load();
+    if (!s) return false;
+    // Only consider valid if it's less than 24h old
+    const age = Date.now() - new Date(s.savedAt).getTime();
+    return age < 86400000;
+  }
+};
+
+// Check for a resumable session on page load and show the banner
+(function initResumeBanner() {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!SessionResume.hasResumable()) return;
+
+    const state = SessionResume.load();
+    const banner = document.getElementById('resume-banner');
+    const label = document.getElementById('resume-session-label');
+    const sub = document.getElementById('resume-session-sub');
+    const continueBtn = document.getElementById('resume-continue-btn');
+    const discardBtn = document.getElementById('resume-discard-btn');
+
+    if (!banner) return;
+
+    const topic = state?.sessionMeta?.topic || 'Unknown session';
+    const answered = (state?.answers || []).filter(Boolean).length;
+    const total = (state?.answers || []).length;
+
+    if (label) label.textContent = `Continue: ${topic}`;
+    if (sub) sub.textContent = `${answered} of ${total} cards answered · ${state?.mode || 'Standard'} mode`;
+
+    banner.style.display = 'block';
+
+    if (continueBtn) {
+      continueBtn.addEventListener('click', () => {
+        // Find session in store
+        let session = null;
+        if (window.EduStore && state.sessionId) {
+          session = window.EduStore.getSessionById(state.sessionId);
+        }
+        if (!session) session = getDefaultSession();
+
+        // Restore state
+        selectedStudyMode = state.mode || 'standard';
+        currentCardIndex = state.cardIndex || 0;
+        sessionAnswers = state.answers || [];
+
+        banner.style.display = 'none';
+        startReview(session, true); // pass resuming=true
+      });
+    }
+
+    if (discardBtn) {
+      discardBtn.addEventListener('click', () => {
+        SessionResume.clear();
+        banner.style.display = 'none';
+      });
+    }
+  });
+})();
+
+// Patch startReview to handle resume (skip index reset when resuming)
+const _origStartReview = startReview;
+window._resumeMode = false;
+function startReview(session, resuming = false) {
+  if (resuming) {
+    // Don't reset cardIndex/sessionAnswers — they were already restored
+    if (!session || !session.cards || session.cards.length === 0) {
+      session = getDefaultSession();
+    }
+
+    currentSession = JSON.parse(JSON.stringify(session));
+
+    const entryCard = document.getElementById('entry-card');
+    const reviewContainer = document.getElementById('review-container');
+    const completionContainer = document.getElementById('completion-container');
+    const resumeBanner = document.getElementById('resume-banner');
+
+    if (entryCard) entryCard.style.display = 'none';
+    if (resumeBanner) resumeBanner.style.display = 'none';
+    if (completionContainer) {
+      completionContainer.style.display = 'none';
+      completionContainer.classList.remove('visible');
+    }
+    if (reviewContainer) {
+      reviewContainer.style.display = 'flex';
+      reviewContainer.classList.add('visible');
+    }
+
+    const fab = document.getElementById('edubot-fab');
+    if (fab) fab.style.display = 'flex';
+
+    renderCard();
+    return;
+  }
+
+  // Normal start — delegate to original logic
+  _origStartReview(session);
+}
+
+// ============================================================
+//  EduFlash AI — Day 16: Session Summary Card Grid
+//  Shows every card as a colour-coded pill on the completion
+//  screen, with topic + result on hover, replacing the less
+//  intuitive dot-timeline.
+// ============================================================
+
+function renderSessionSummaryGrid() {
+  const wrap = document.getElementById('session-summary-grid-wrap');
+  const grid = document.getElementById('ssq-grid');
+  if (!wrap || !grid) return;
+
+  const answers = sessionAnswers.filter(Boolean);
+  if (!currentSession || answers.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+
+  grid.innerHTML = answers.map((ans, idx) => {
+    const card = currentSession.cards ? currentSession.cards.find(c => c.id === ans.cardId) : null;
+    const question = card ? (card.question.length > 55 ? card.question.slice(0, 53) + '…' : card.question) : `Card ${idx + 1}`;
+    const topic = card ? (card.topic || currentSession.topic || '') : '';
+
+    // Determine colour class
+    let cls = 'ssq-pill-missed'; // red — wrong + nope
+    let icon = '✗';
+    if (ans.isCorrect && ans.rating === 'know') {
+      cls = 'ssq-pill-know'; icon = '✓';
+    } else if (ans.isCorrect && ans.rating === 'fuzzy') {
+      cls = 'ssq-pill-fuzzy'; icon = '~';
+    } else if (!ans.isCorrect && ans.rating === 'fuzzy') {
+      cls = 'ssq-pill-fuzzy-wrong'; icon = '~';
+    } else if (ans.isCorrect) {
+      cls = 'ssq-pill-know'; icon = '✓';
+    }
+
+    return `
+      <div class="ssq-pill ${cls}" title="${escapeHTML(question)}">
+        <span class="ssq-pill-num">${idx + 1}</span>
+        <span class="ssq-pill-icon">${icon}</span>
+        <div class="ssq-pill-tooltip">
+          <div class="ssq-tooltip-q">${escapeHTML(question)}</div>
+          ${topic ? `<div class="ssq-tooltip-topic">${escapeHTML(topic)}</div>` : ''}
+          <div class="ssq-tooltip-result" style="color:${ans.isCorrect ? 'var(--green-light)' : '#f28b82'};">
+            ${ans.isCorrect ? '✓ Correct' : '✗ Wrong'} · ${ans.rating === 'know' ? 'Know it' : ans.rating === 'fuzzy' ? 'Fuzzy' : "Don't know"}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 
