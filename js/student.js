@@ -1263,7 +1263,7 @@ function handleSelfRating(ratingType) {
   // Enable Next button
   document.getElementById('review-next-btn').disabled = false;
 
-  // Day 16: Persist resume state after each self-rating
+  // Day 15: Persist resume state after each self-rating
   SessionResume.save();
   
   // Day 11: Save to Spaced Repetition Engine
@@ -1305,7 +1305,7 @@ function initReviewControls() {
   });
 
   exitBtn.addEventListener('click', () => {
-    SessionResume.clear(); // Day 16: clear resume on deliberate exit
+    SessionResume.clear(); // Day 15: clear resume on deliberate exit
     window.location.reload();
   });
 }
@@ -1329,7 +1329,7 @@ async function finishReview() {
     cardResponses: sessionAnswers
   };
 
-  // Day 16: Clear resume state on finish
+  // Day 15: Clear resume state on finish
   SessionResume.clear();
 
   // Clean up timers and voice recognition on finish
@@ -2047,7 +2047,7 @@ Return ONLY valid JSON. No markdown, no explanations.`;
       renderProgressTimeline();
       // Day 15: render Real-World Perks Hub
       if (typeof renderRealWorldPerksHub === 'function') renderRealWorldPerksHub();
-      // Day 16: render Session Summary Grid
+      // Day 15: render Session Summary Grid
       if (typeof renderSessionSummaryGrid === 'function') renderSessionSummaryGrid();
     }
   });
@@ -2523,7 +2523,7 @@ Return ONLY valid JSON. No markdown fences. Example:
 }
 
 // ============================================================
-//  EduFlash AI — Day 16: Session Resume Persistence
+//  EduFlash AI — Day 15: Session Resume Persistence
 //  Saves progress to localStorage so students can pick up
 //  where they left off if they close the tab mid-session.
 // ============================================================
@@ -2621,7 +2621,7 @@ const SessionResume = {
 
 
 // ============================================================
-//  EduFlash AI — Day 16: Session Summary Card Grid
+//  EduFlash AI — Day 15: Session Summary Card Grid
 //  Shows every card as a colour-coded pill on the completion
 //  screen, with topic + result on hover, replacing the less
 //  intuitive dot-timeline.

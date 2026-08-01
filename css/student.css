@@ -2022,7 +2022,7 @@
   margin-top: 14px;
 }
 
-/* ── Day 16: Resume Session Banner ── */
+/* ── Day 15: Resume Session Banner ── */
 .resume-banner {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
@@ -2060,7 +2060,7 @@
   flex-shrink: 0;
 }
 
-/* ── Day 16: Session Summary Card Grid ── */
+/* ── Day 15: Session Summary Card Grid ── */
 .session-summary-grid-wrap {
   background: var(--bg-card);
   border: 1px solid var(--border);
