@@ -2716,6 +2716,14 @@ const PracticePlannerEngine = {
       daysOffset = [1, 2, 5];
     }
 
+    let weeklyRecommendation = `Based on your score of <strong>${accuracy}%</strong>, we recommend practicing this topic <strong>2 times a week</strong> to solidify your recall and convert short-term learning into permanent memory.`;
+
+    if (status === 'solidified') {
+      weeklyRecommendation = `Outstanding performance! Based on your high score of <strong>${accuracy}%</strong> and confident self-ratings, we recommend practicing this topic <strong>1 time a week</strong> for long-term memory maintenance.`;
+    } else if (status === 'decay_risk') {
+      weeklyRecommendation = `Urgent review recommended! Based on your score of <strong>${accuracy}%</strong> (${nopeCount} missed/fuzzy cards), we recommend practicing this topic <strong>3 times a week</strong> (e.g. Tomorrow, Day 2, Day 5) to strengthen your grasp of the concepts.`;
+    }
+
     const today = new Date();
     const steps = daysOffset.map((offsetDays, idx) => {
       const targetDate = new Date(today);
@@ -2750,6 +2758,7 @@ const PracticePlannerEngine = {
       status,
       cadenceText,
       retentionPct,
+      weeklyRecommendation,
       steps,
       topic: (session && session.topic) ? session.topic : 'Flashcard Deck',
       subject: (session && session.subject) ? session.subject : 'General Study'
@@ -2783,6 +2792,9 @@ const PracticePlannerEngine = {
         cadenceBadge.style.color = 'var(--yellow)';
       }
     }
+
+    const recTextEl = document.getElementById('planner-recommendation-text');
+    if (recTextEl) recTextEl.innerHTML = plan.weeklyRecommendation;
 
     const rateEl = document.getElementById('planner-retention-rate');
     const barEl = document.getElementById('planner-forecast-bar');
