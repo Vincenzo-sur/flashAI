@@ -62,6 +62,7 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 11: Spaced Repetition, Student Analytics, Theme Switcher, Keyboard Shortcuts & Notifications** — Leitner box spaced repetition engine, student personal analytics dashboard with sparkline charts and study streaks, Dark/Light/Auto theme switcher, full keyboard navigation with `?` help overlay, and teacher notification center with bell badge (Day 11)
 - [x] **Day 14: Achievement & XP Leaderboard System, AI Adaptive Study Paths** — XP engine with 5 levels and 6 unlockable badges, animated level-up modal, class leaderboard in teacher Analytics, Gemini-powered personalized study path generator (Day 14)
 - [x] **Day 15: Purposeful Student Growth, Real-World Perks, AI Scenario Challenges & Smart Session Resume** — Real-world competency tier mapping (Industry-Ready Master, Subject Lead, Practical Specialist), Real-World Perks Hub on student completion screen, Gemini AI-powered Real-World Scenario Challenge modal, Teacher Real-World Perks & Competency Qualifications matrix tab, automatic session progress resume memory, and interactive visual card breakdown grid (Day 15)
+- [x] **Day 16: Personalized AI Practice Planner & Memory Retention Schedule** — AI practice frequency generator based on student score and self-ratings, memory retention forecast timeline bar, preferred study time selector, 1-click `.ics` iCalendar download, and persistent student practice schedule drawer (Day 16)
 
 ---
 

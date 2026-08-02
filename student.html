@@ -24,7 +24,10 @@
       <div class="navbar-right">
         <!-- Day 11: Theme Toggle -->
         <button class="theme-toggle" id="theme-toggle" title="Toggle theme">🌙</button>
-        <span class="nav-badge" style="background:rgba(251,188,4,0.1);color:var(--yellow);border-color:rgba(251,188,4,0.25);">Student</span>
+        <!-- Day 16: My Practice Planner Button -->
+        <button class="btn btn-outline btn-sm" id="nav-planner-btn" title="View your practice schedule">
+          📅 My Planner <span class="nav-planner-badge" id="nav-planner-badge" style="display:none; background:var(--green-light); color:#000; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:700; margin-left:2px;">0</span>
+        </button>
         <a href="teacher.html" class="btn btn-ghost btn-sm" id="nav-teacher-link">Switch to Teacher</a>
         <button class="btn btn-outline btn-sm" id="nav-signin-btn">👤 Sign In</button>
         <a href="index.html"   class="btn btn-outline btn-sm" id="nav-home-link">Home</a>
@@ -347,6 +350,57 @@
         🚀 Generate My AI Remediation Plan
       </button>
 
+      <!-- Day 16: AI Practice Schedule & Retention Planner -->
+      <div class="practice-planner-card" id="practice-planner-card" style="width:100%; margin-bottom:20px; display:none;">
+        <div class="planner-card-header">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.4rem;">🗓️</span>
+            <div>
+              <div class="planner-card-title">Personalized Practice Schedule</div>
+              <div class="planner-card-sub">AI-recommended practice frequency for maximum memory retention</div>
+            </div>
+          </div>
+          <span class="planner-cadence-badge" id="planner-cadence-badge">3x / week</span>
+        </div>
+
+        <div class="planner-card-body">
+          <!-- Forecast retention bar -->
+          <div class="planner-forecast-box">
+            <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:600; margin-bottom:6px;">
+              <span>Memory Retention Forecast (7 Days)</span>
+              <span id="planner-retention-rate" style="color:var(--green-light);">88% Projected Recall</span>
+            </div>
+            <div class="planner-forecast-bar-bg">
+              <div class="planner-forecast-bar-fill" id="planner-forecast-bar" style="width: 88%;"></div>
+            </div>
+            <p class="planner-forecast-hint" id="planner-forecast-hint">
+              💡 Practicing this topic on the recommended dates will convert short-term memory into long-term recall.
+            </p>
+          </div>
+
+          <!-- Time Preference Selector -->
+          <div class="planner-time-row">
+            <span class="planner-time-label">Preferred Study Time:</span>
+            <div class="planner-time-options" id="planner-time-options">
+              <button class="planner-time-chip active" data-time="16:00">🌆 4:00 PM</button>
+              <button class="planner-time-chip" data-time="20:00">🌙 8:00 PM</button>
+              <button class="planner-time-chip" data-time="08:00">🌅 8:00 AM</button>
+            </div>
+          </div>
+
+          <!-- Timeline Steps -->
+          <div class="planner-timeline" id="planner-timeline">
+            <!-- Dynamically populated review dates -->
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="planner-actions">
+            <button class="btn btn-green btn-sm" id="btn-save-plan" style="flex:1;">📌 Save to My Study Plan</button>
+            <button class="btn btn-outline btn-sm" id="btn-export-ics" style="flex:1;">📅 Download Calendar (.ics)</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Day 11: Student Personal Analytics Dashboard -->
       <div id="student-analytics" style="display:none; width:100%;">
         <div class="student-analytics-header">📊 Your Progress</div>
@@ -508,10 +562,35 @@
   <!-- Day 9: Canvas Confetti -->
   <canvas id="confetti-canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:9999; display:none;"></canvas>
 
-  <script src="js/classroom-api.js"></script>
+  <!-- Day 16: Practice Planner Saved Schedule Modal -->
+  <div class="planner-modal-overlay" id="planner-modal-overlay" style="display:none;">
+    <div class="planner-modal-content">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">📅</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);">My Practice Schedule</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);">Upcoming flashcard review reminders & retention plan</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="planner-close-btn">&times;</button>
+      </div>
+
+      <div class="planner-modal-body" id="planner-modal-body">
+        <!-- List of planned sessions injected by JS -->
+      </div>
+
+      <div class="planner-modal-footer">
+        <button class="btn btn-outline btn-sm" id="planner-clear-all-btn">Clear All Plans</button>
+        <button class="btn btn-green btn-sm" id="planner-done-btn">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
   <script src="js/firebase-store.js"></script>
   <script src="js/store.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/classroom-api.js"></script>
   <script src="js/student.js"></script>
 
 </body>

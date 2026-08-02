@@ -1362,6 +1362,11 @@ async function finishReview() {
   // Day 11: Analytics Dashboard
   saveAndRenderAnalytics(currentSession.id, accuracy, sessionAnswers, currentSession.cards);
 
+  // Day 16: Render Personalized Practice Schedule & Memory Retention Planner
+  if (typeof PracticePlannerEngine !== 'undefined') {
+    PracticePlannerEngine.renderWidget(currentSession, accuracy, sessionAnswers);
+  }
+
   // Day 14: XP bonuses and achievements
   let xpResult = null;
   let streak = 0;
@@ -2673,5 +2678,339 @@ function renderSessionSummaryGrid() {
     `;
   }).join('');
 }
+
+// ============================================================
+//  EduFlash AI — Day 16: Personalized Practice Schedule Engine
+// ============================================================
+const PracticePlannerEngine = {
+  selectedTime: '16:00', // Default 4:00 PM
+  currentPlan: null,
+  currentSession: null,
+
+  calculatePlan(session, accuracy, responses) {
+    let knowCount = 0, fuzzyCount = 0, nopeCount = 0;
+    if (Array.isArray(responses)) {
+      responses.forEach(r => {
+        if (!r) return;
+        if (r.rating === 'know') knowCount++;
+        else if (r.rating === 'fuzzy') fuzzyCount++;
+        else if (r.rating === 'nope') nopeCount++;
+      });
+    }
+
+    const totalResp = Math.max(1, responses ? responses.length : 1);
+    let status = 'moderate';
+    let cadenceText = '2x / week';
+    let retentionPct = 78;
+    let daysOffset = [1, 3, 7];
+
+    if (accuracy >= 85 && knowCount >= (totalResp * 0.6)) {
+      status = 'solidified';
+      cadenceText = '1x / week (Maintenance)';
+      retentionPct = 94;
+      daysOffset = [3, 7, 21];
+    } else if (accuracy < 65 || nopeCount > (totalResp * 0.3)) {
+      status = 'decay_risk';
+      cadenceText = '3x / week (Urgent Review)';
+      retentionPct = 58;
+      daysOffset = [1, 2, 5];
+    }
+
+    const today = new Date();
+    const steps = daysOffset.map((offsetDays, idx) => {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + offsetDays);
+
+      let stepGoal = 'Lock short-term memory';
+      let icon = '⚡';
+      let name = 'First Memory Reinforcement';
+
+      if (idx === 1) {
+        stepGoal = 'Consolidate to long-term memory';
+        icon = '🧠';
+        name = 'Deep Recall Practice';
+      } else if (idx === 2) {
+        stepGoal = 'Permanent recall & mastery check';
+        icon = '🏆';
+        name = 'Mastery Solidification';
+      }
+
+      return {
+        stepNum: idx + 1,
+        offsetDays,
+        dateStr: targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        isoDate: targetDate.toISOString().split('T')[0],
+        name,
+        icon,
+        stepGoal
+      };
+    });
+
+    return {
+      status,
+      cadenceText,
+      retentionPct,
+      steps,
+      topic: (session && session.topic) ? session.topic : 'Flashcard Deck',
+      subject: (session && session.subject) ? session.subject : 'General Study'
+    };
+  },
+
+  renderWidget(session, accuracy, responses) {
+    const cardEl = document.getElementById('practice-planner-card');
+    if (!cardEl) return;
+
+    cardEl.style.display = 'block';
+
+    const plan = this.calculatePlan(session, accuracy, responses);
+    this.currentPlan = plan;
+    this.currentSession = session;
+
+    const cadenceBadge = document.getElementById('planner-cadence-badge');
+    if (cadenceBadge) {
+      cadenceBadge.textContent = plan.cadenceText;
+      if (plan.status === 'decay_risk') {
+        cadenceBadge.style.background = 'rgba(234,67,53,0.15)';
+        cadenceBadge.style.borderColor = 'rgba(234,67,53,0.4)';
+        cadenceBadge.style.color = '#f28b82';
+      } else if (plan.status === 'solidified') {
+        cadenceBadge.style.background = 'rgba(52,168,83,0.15)';
+        cadenceBadge.style.borderColor = 'rgba(52,168,83,0.4)';
+        cadenceBadge.style.color = 'var(--green-light)';
+      } else {
+        cadenceBadge.style.background = 'rgba(251,188,4,0.15)';
+        cadenceBadge.style.borderColor = 'rgba(251,188,4,0.4)';
+        cadenceBadge.style.color = 'var(--yellow)';
+      }
+    }
+
+    const rateEl = document.getElementById('planner-retention-rate');
+    const barEl = document.getElementById('planner-forecast-bar');
+    const hintEl = document.getElementById('planner-forecast-hint');
+
+    if (rateEl) rateEl.textContent = `${plan.retentionPct}% Projected Recall`;
+    if (barEl) barEl.style.width = `${plan.retentionPct}%`;
+    if (hintEl) {
+      if (plan.status === 'decay_risk') {
+        hintEl.textContent = '⚠️ Memory decay risk is high for this topic! Practice tomorrow to prevent forgetting key details.';
+      } else if (plan.status === 'solidified') {
+        hintEl.textContent = '🌟 Excellent recall! Spaced maintenance reviews will keep this topic locked in your memory indefinitely.';
+      } else {
+        hintEl.textContent = '💡 Practicing on the recommended dates below converts short-term memory into permanent recall.';
+      }
+    }
+
+    const timelineEl = document.getElementById('planner-timeline');
+    if (timelineEl) {
+      timelineEl.innerHTML = plan.steps.map(s => `
+        <div class="planner-step-row">
+          <div class="planner-step-left">
+            <span class="planner-step-icon">${s.icon}</span>
+            <div>
+              <div class="planner-step-name">${s.name}</div>
+              <div class="planner-step-goal">${s.stepGoal}</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div class="planner-step-date">${s.dateStr}</div>
+            <div style="font-size:0.68rem; color:var(--text-dim);">Due in ${s.offsetDays} day${s.offsetDays > 1 ? 's' : ''}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    const chips = document.querySelectorAll('.planner-time-chip');
+    chips.forEach(chip => {
+      chip.onclick = () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        this.selectedTime = chip.dataset.time || '16:00';
+      };
+    });
+
+    const saveBtn = document.getElementById('btn-save-plan');
+    if (saveBtn) {
+      saveBtn.onclick = () => this.saveToStudyPlan();
+    }
+
+    const exportBtn = document.getElementById('btn-export-ics');
+    if (exportBtn) {
+      exportBtn.onclick = () => this.exportICS();
+    }
+  },
+
+  saveToStudyPlan() {
+    if (!this.currentPlan || !this.currentSession) return;
+
+    const item = {
+      sessionId: this.currentSession.id,
+      topic: this.currentPlan.topic,
+      subject: this.currentPlan.subject,
+      cadenceText: this.currentPlan.cadenceText,
+      selectedTime: this.selectedTime,
+      steps: this.currentPlan.steps,
+      savedAt: new Date().toISOString()
+    };
+
+    window.EduStore.addPlannerItem(item);
+
+    if (typeof showToast !== 'undefined') {
+      showToast('📌 Practice schedule saved to My Planner!', 'success');
+    } else {
+      alert('📌 Practice schedule saved to My Planner!');
+    }
+
+    this.updateNavBadge();
+  },
+
+  exportICS() {
+    if (!this.currentPlan || !this.currentSession) return;
+
+    const topic = this.currentPlan.topic;
+    const [hours, minutes] = (this.selectedTime || '16:00').split(':').map(Number);
+
+    let icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//EduFlash AI//Practice Planner//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH'
+    ];
+
+    this.currentPlan.steps.forEach(step => {
+      const d = new Date(step.isoDate);
+      d.setHours(hours || 16, minutes || 0, 0, 0);
+
+      const endD = new Date(d.getTime() + 15 * 60 * 1000);
+
+      const formatICSDate = (dateObj) => {
+        return dateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      };
+
+      icsContent.push(
+        'BEGIN:VEVENT',
+        `SUMMARY:📚 EduFlash AI Review: ${topic}`,
+        `DESCRIPTION:Scheduled flashcard practice session for ${topic}. Goal: ${step.stepGoal}`,
+        `DTSTART:${formatICSDate(d)}`,
+        `DTEND:${formatICSDate(endD)}`,
+        `STATUS:CONFIRMED`,
+        `BEGIN:VALARM`,
+        `TRIGGER:-PT15M`,
+        `ACTION:DISPLAY`,
+        `DESCRIPTION:Reminder: Flashcard review for ${topic}`,
+        `END:VALARM`,
+        'END:VEVENT'
+      );
+    });
+
+    icsContent.push('END:VCALENDAR');
+
+    const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `EduFlash_Practice_Plan_${topic.replace(/\s+/g, '_')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    if (typeof showToast !== 'undefined') {
+      showToast('📅 iCalendar (.ics) file downloaded!', 'success');
+    }
+  },
+
+  updateNavBadge() {
+    if (typeof window.EduStore === 'undefined' || !window.EduStore.getPlannerSchedule) return;
+    const list = window.EduStore.getPlannerSchedule();
+    const badgeEl = document.getElementById('nav-planner-badge');
+    if (badgeEl) {
+      if (list.length > 0) {
+        badgeEl.style.display = 'inline-block';
+        badgeEl.textContent = list.length;
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+  },
+
+  initModal() {
+    const navBtn = document.getElementById('nav-planner-btn');
+    const overlay = document.getElementById('planner-modal-overlay');
+    const closeBtn = document.getElementById('planner-close-btn');
+    const doneBtn = document.getElementById('planner-done-btn');
+    const clearBtn = document.getElementById('planner-clear-all-btn');
+
+    if (!navBtn || !overlay) return;
+
+    this.updateNavBadge();
+
+    navBtn.onclick = () => {
+      this.renderModalBody();
+      overlay.style.display = 'flex';
+    };
+
+    if (closeBtn) closeBtn.onclick = () => overlay.style.display = 'none';
+    if (doneBtn) doneBtn.onclick = () => overlay.style.display = 'none';
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        window.EduStore.savePlannerSchedule([]);
+        this.renderModalBody();
+        this.updateNavBadge();
+        if (typeof showToast !== 'undefined') showToast('Cleared practice schedule', 'info');
+      };
+    }
+  },
+
+  renderModalBody() {
+    const modalBody = document.getElementById('planner-modal-body');
+    if (!modalBody) return;
+
+    const list = window.EduStore.getPlannerSchedule();
+    if (list.length === 0) {
+      modalBody.innerHTML = `
+        <div style="text-align:center; padding:30px; color:var(--text-dim);">
+          <div style="font-size:2rem; margin-bottom:8px;">🗓️</div>
+          <div style="font-weight:600; color:var(--text);">No practice sessions scheduled yet</div>
+          <div style="font-size:0.78rem; margin-top:4px;">Complete any flashcard review to generate an AI personalized practice plan!</div>
+        </div>
+      `;
+      return;
+    }
+
+    modalBody.innerHTML = list.map(item => `
+      <div class="planner-modal-item">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700; font-size:0.92rem; color:var(--green-light);">${escapeHTML(item.topic)}</div>
+            <div style="font-size:0.74rem; color:var(--text-dim);">${escapeHTML(item.subject)} · Cadence: ${item.cadenceText}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="PracticePlannerEngine.removeItem('${item.sessionId}')" style="color:#f28b82; padding:2px 6px;">&times; Remove</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          ${(item.steps || []).map(s => `
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px;">
+              <span>${s.icon} ${s.name}</span>
+              <span style="color:var(--green-light); font-weight:600;">${s.dateStr} @ ${item.selectedTime || '16:00'}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  },
+
+  removeItem(sessionId) {
+    window.EduStore.removePlannerItem(sessionId);
+    this.renderModalBody();
+    this.updateNavBadge();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (typeof PracticePlannerEngine !== 'undefined') {
+      PracticePlannerEngine.initModal();
+    }
+  }, 300);
+});
+
 
 

@@ -9,7 +9,8 @@
 
 const STORE_KEYS = {
   SESSIONS: 'ef_sessions',
-  API_KEY: 'ef_gemini_api_key'
+  API_KEY: 'ef_gemini_api_key',
+  PLANNER: 'ef_student_planner'
 };
 
 // Initial mock sessions to populate if the store is empty
@@ -332,8 +333,32 @@ const EduStore = {
   saveFirebaseConfig(cfg) {
     if (typeof window.FirebaseStore !== 'undefined') window.FirebaseStore.saveConfig(cfg);
   },
-  clearFirebaseConfig() {
-    if (typeof window.FirebaseStore !== 'undefined') window.FirebaseStore.clearConfig();
+  // ── Student Practice Planner Schedule ─────────────────────
+  getPlannerSchedule() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE_KEYS.PLANNER)) || [];
+    } catch {
+      return [];
+    }
+  },
+  savePlannerSchedule(scheduleItems) {
+    localStorage.setItem(STORE_KEYS.PLANNER, JSON.stringify(scheduleItems));
+  },
+  addPlannerItem(item) {
+    const list = this.getPlannerSchedule();
+    const existingIdx = list.findIndex(i => i.sessionId === item.sessionId);
+    if (existingIdx !== -1) {
+      list[existingIdx] = item;
+    } else {
+      list.unshift(item);
+    }
+    this.savePlannerSchedule(list);
+    return list;
+  },
+  removePlannerItem(sessionId) {
+    const list = this.getPlannerSchedule().filter(i => i.sessionId !== sessionId);
+    this.savePlannerSchedule(list);
+    return list;
   }
 };
 
