@@ -350,7 +350,7 @@
         🚀 Generate My AI Remediation Plan
       </button>
 
-      <!-- Day 16: AI Practice Schedule & Retention Planner -->
+      <!-- Day 16 + Day 17: AI Practice Schedule & Retention Planner -->
       <div class="practice-planner-card" id="practice-planner-card" style="width:100%; margin-bottom:20px; display:none;">
         <div class="planner-card-header">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -360,33 +360,53 @@
               <div class="planner-card-sub">AI-recommended practice frequency for maximum memory retention</div>
             </div>
           </div>
-          <span class="planner-cadence-badge" id="planner-cadence-badge">3x / week</span>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="planner-cadence-badge" id="planner-cadence-badge">3x / week</span>
+            <!-- Day 17: AI Plan Generator Button -->
+            <button class="planner-ai-btn" id="btn-generate-ai-plan" title="Generate a personalized plan using Gemini AI">✨ AI Plan</button>
+          </div>
         </div>
 
-        <div class="planner-card-body">
-          <!-- Forecast retention bar -->
-          <div class="planner-forecast-box">
-            <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:600; margin-bottom:6px;">
-              <span>Memory Retention Forecast (7 Days)</span>
-              <span id="planner-retention-rate" style="color:var(--green-light);">88% Projected Recall</span>
+        <!-- Day 17: AI loading shimmer -->
+        <div class="planner-ai-loading" id="planner-ai-loading" style="display:none;">
+          <div class="planner-shimmer-row"></div>
+          <div class="planner-shimmer-row short"></div>
+          <div class="planner-shimmer-row"></div>
+        </div>
+
+        <div class="planner-card-body" id="planner-card-body">
+          <!-- Day 17: Ebbinghaus Retention Curve Canvas (replaces static bar) -->
+          <div class="retention-curve-wrap">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:0.78rem; font-weight:600;">Memory Retention Curve (30-day forecast)</span>
+              <span id="planner-retention-rate" style="color:var(--green-light); font-size:0.78rem; font-weight:700;">-- Projected Recall</span>
             </div>
-            <div class="planner-forecast-bar-bg">
-              <div class="planner-forecast-bar-fill" id="planner-forecast-bar" style="width: 88%;"></div>
-            </div>
+            <canvas id="retention-curve-canvas" width="480" height="100" style="width:100%; height:100px; border-radius:8px;"></canvas>
             <p class="planner-forecast-hint" id="planner-forecast-hint">
-              💡 Practicing this topic on the recommended dates will convert short-term memory into long-term recall.
+              💡 Practicing on the marked dates reinforces memory right before it fades.
             </p>
           </div>
 
           <!-- Weekly AI Practice Recommendation Banner -->
-          <div class="planner-recommendation-box" id="planner-recommendation-box" style="background: rgba(52,168,83,0.08); border: 1px solid rgba(52,168,83,0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+          <div class="planner-recommendation-box" id="planner-recommendation-box" style="background: rgba(52,168,83,0.08); border: 1px solid rgba(52,168,83,0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
               <span style="font-size:1.1rem;">📊</span>
               <strong style="font-size:0.85rem; color:var(--green-light);" id="planner-recommendation-title">Weekly Practice Recommendation</strong>
             </div>
             <p style="font-size:0.78rem; color:var(--text); margin:0; line-height:1.4;" id="planner-recommendation-text">
-              Based on your score of 80%, we recommend practicing this topic <strong>2 times a week</strong> to strengthen your grasp of the concept.
+              Based on your score, we recommend practicing this topic <strong>2 times a week</strong> to solidify recall.
             </p>
+          </div>
+
+          <!-- Day 17: Why this schedule? collapsible accordion -->
+          <div class="planner-why-section" id="planner-why-section">
+            <button class="planner-why-toggle" id="planner-why-toggle" aria-expanded="false">
+              <span>💡 Why this schedule?</span>
+              <span class="planner-why-arrow" id="planner-why-arrow">›</span>
+            </button>
+            <div class="planner-why-body" id="planner-why-body">
+              <p id="planner-why-text" style="font-size:0.78rem; color:var(--text); line-height:1.55; margin:0;">This schedule is based on the Ebbinghaus Forgetting Curve — research shows memory retention drops sharply within 24 hours unless reviewed. Spaced repetition at increasing intervals (1, 3, 7 days) converts short-term memory to long-term recall with minimal effort.</p>
+            </div>
           </div>
 
           <!-- Time Preference Selector -->
@@ -581,7 +601,7 @@
           <span style="font-size:1.4rem;">📅</span>
           <div>
             <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);">My Practice Schedule</h3>
-            <span style="font-size:0.75rem; color:var(--text-dim);">Upcoming flashcard review reminders & retention plan</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">Upcoming flashcard reviews · AI-personalized</span>
           </div>
         </div>
         <button class="planner-close-btn" id="planner-close-btn">&times;</button>

@@ -75,6 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   ['compare-session-a', 'compare-session-b'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', renderSessionComparison);
   });
+
+  // Day 17: init Practice Tracker
+  if (typeof TeacherPracticeTracker !== 'undefined') TeacherPracticeTracker.init();
 });
 
 
@@ -200,6 +203,10 @@ function switchPanel(panelId) {
   }
   if (panelId === 'overview' || panelId === 'topics' || panelId === 'suggestions') {
     renderAnalytics();
+  }
+  // Day 17: Refresh Practice Tracker when switching to that panel
+  if (panelId === 'practice-tracker') {
+    if (typeof TeacherPracticeTracker !== 'undefined') TeacherPracticeTracker.renderTable();
   }
 
   // Day 13: auto-scroll main content to top on every panel switch
@@ -3403,3 +3410,182 @@ function renderRealWorldPerksMatrix(students) {
   });
 })();
 
+// ============================================================
+//  EduFlash AI — Day 17: Teacher Class Practice Tracker
+// ============================================================
+const TeacherPracticeTracker = {
+
+  init() {
+    // Wire Refresh button
+    document.getElementById('btn-tracker-refresh')?.addEventListener('click', () => {
+      this.renderTable();
+      if (typeof showToast !== 'undefined') showToast('Practice tracker refreshed', 'info');
+    });
+
+    // Wire Remind All button
+    document.getElementById('btn-remind-all')?.addEventListener('click', () => {
+      this.showRemindAllBanner();
+    });
+
+    // Wire Copy button (delegated)
+    document.getElementById('btn-copy-reminder')?.addEventListener('click', () => {
+      const msg = document.getElementById('remind-all-message')?.textContent || '';
+      navigator.clipboard?.writeText(msg).then(() => {
+        if (typeof showToast !== 'undefined') showToast('📋 Reminder message copied to clipboard!', 'success');
+      }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = msg;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (typeof showToast !== 'undefined') showToast('📋 Copied!', 'success');
+      });
+    });
+  },
+
+  // Read planner data — from all sessions' saved plans in localStorage
+  getPlannerItems() {
+    try {
+      return JSON.parse(localStorage.getItem('ef_student_planner')) || [];
+    } catch {
+      return [];
+    }
+  },
+
+  computeStatus(item) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const steps = item.steps || [];
+    if (steps.length === 0) return 'not-started';
+    const nextStep = steps.find(s => new Date(s.isoDate) >= today);
+    if (!nextStep) return 'on-track'; // all done = completed is shown as on-track
+    const daysUntilNext = Math.ceil((new Date(nextStep.isoDate) - today) / 86400000);
+    if (daysUntilNext < 0) return 'overdue';
+    return 'on-track';
+  },
+
+  renderTable() {
+    const container = document.getElementById('practice-tracker-container');
+    if (!container) return;
+
+    const items = this.getPlannerItems();
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="tracker-empty-state">
+          <div class="tracker-empty-state-icon">📅</div>
+          <div class="tracker-empty-state-title">No Practice Plans Yet</div>
+          <div class="tracker-empty-state-sub">When students save practice schedules after completing a flashcard session, their plans will appear here.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const rows = items.map((item, idx) => {
+      const status = this.computeStatus(item);
+      const steps = item.steps || [];
+      const nextStep = steps.find(s => new Date(s.isoDate) >= today);
+      const nextDateStr = nextStep ? nextStep.dateStr : steps.length > 0 ? '✅ All complete' : '—';
+
+      const statusLabel = {
+        'on-track': '✅ On Track',
+        'overdue':  '⚠️ Overdue',
+        'not-started': '— Not Started'
+      }[status] || '—';
+
+      // Generate a display name from sessionId / topic initials
+      const initials = item.topic ? item.topic.split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase()).join('') : 'S';
+      const studentLabel = `Student ${idx + 1}`;
+
+      return `
+        <tr>
+          <td>
+            <div class="tracker-student-cell">
+              <div class="tracker-avatar">${initials}</div>
+              <div>
+                <div style="font-weight:600; font-size:0.83rem; color:var(--text);">${studentLabel}</div>
+                <div style="font-size:0.7rem; color:var(--text-dim);">Session: ${item.sessionId || '—'}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div style="font-weight:500; font-size:0.83rem;">${escapeHTML(item.topic || '—')}</div>
+            <div style="font-size:0.7rem; color:var(--text-dim);">${escapeHTML(item.subject || '—')}</div>
+          </td>
+          <td><span class="tracker-cadence-chip">${item.cadenceText || '—'}</span></td>
+          <td style="font-size:0.82rem; color:var(--green-light); font-weight:600;">${nextDateStr}</td>
+          <td><span class="tracker-status-badge ${status}">${statusLabel}</span></td>
+          <td style="font-size:0.75rem; color:var(--text-dim);">${item.isAI ? '<span style="color:var(--green-light);">✨ AI</span>' : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const onTrack  = items.filter(i => this.computeStatus(i) === 'on-track').length;
+    const overdue  = items.filter(i => this.computeStatus(i) === 'overdue').length;
+
+    container.innerHTML = `
+      <!-- Summary chips -->
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+        <div style="background:rgba(52,168,83,0.1); border:1px solid rgba(52,168,83,0.3); border-radius:10px; padding:6px 14px; font-size:0.78rem; font-weight:600; color:var(--green-light);">
+          ✅ ${onTrack} On Track
+        </div>
+        <div style="background:rgba(234,67,53,0.1); border:1px solid rgba(234,67,53,0.3); border-radius:10px; padding:6px 14px; font-size:0.78rem; font-weight:600; color:#f28b82;">
+          ⚠️ ${overdue} Overdue
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; padding:6px 14px; font-size:0.78rem; font-weight:600; color:var(--text-dim);">
+          📋 ${items.length} Total Plans
+        </div>
+      </div>
+
+      <div class="practice-tracker-wrap">
+        <table class="practice-tracker-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Topic</th>
+              <th>Cadence</th>
+              <th>Next Review</th>
+              <th>Status</th>
+              <th>Plan Type</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  },
+
+  showRemindAllBanner() {
+    const items = this.getPlannerItems();
+    const banner = document.getElementById('remind-all-banner');
+    const msgEl  = document.getElementById('remind-all-message');
+    if (!banner || !msgEl) return;
+
+    const today = new Date();
+    const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const topics = [...new Set(items.map(i => i.topic).filter(Boolean))];
+
+    const message = `📚 EduFlash AI — Practice Reminder (${todayStr})
+
+Hi students! 👋 This is a reminder to complete your scheduled flashcard reviews.
+
+Topics with scheduled practice sessions:
+${topics.map(t => `  • ${t}`).join('\n')}
+
+To review: Open the Student Portal → enter your class code → select your session.
+Your personalized practice plan is waiting — even 10 minutes today makes a big difference! 🧠
+
+Keep it up — consistent spaced review is the #1 way to lock content into long-term memory.
+
+— Your Teacher (via EduFlash AI)`;
+
+    msgEl.textContent = message;
+    banner.style.display = 'block';
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+};

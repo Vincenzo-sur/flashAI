@@ -2680,13 +2680,14 @@ function renderSessionSummaryGrid() {
 }
 
 // ============================================================
-//  EduFlash AI — Day 16: Personalized Practice Schedule Engine
+//  EduFlash AI — Day 16 + Day 17: Personalized Practice Schedule Engine
 // ============================================================
 const PracticePlannerEngine = {
-  selectedTime: '16:00', // Default 4:00 PM
+  selectedTime: localStorage.getItem('ef_planner_time') || '16:00',
   currentPlan: null,
   currentSession: null,
 
+  // ── Heuristic plan calculation (instant fallback) ──────────
   calculatePlan(session, accuracy, responses) {
     let knowCount = 0, fuzzyCount = 0, nopeCount = 0;
     if (Array.isArray(responses)) {
@@ -2716,102 +2717,355 @@ const PracticePlannerEngine = {
       daysOffset = [1, 2, 5];
     }
 
-    let weeklyRecommendation = `Based on your score of <strong>${accuracy}%</strong>, we recommend practicing this topic <strong>2 times a week</strong> to solidify your recall and convert short-term learning into permanent memory.`;
+    const whyReason = status === 'solidified'
+      ? `Your score of ${accuracy}% and ${knowCount} confident "Know it" ratings show strong recall. A weekly maintenance review is enough to keep this topic in long-term memory.`
+      : status === 'decay_risk'
+      ? `Your score of ${accuracy}% with ${nopeCount} missed or fuzzy cards signals active memory decay. Without review in 24 hours, retention can drop below 40%. Reviewing urgently 3 times this week prevents that loss.`
+      : `Your score of ${accuracy}% shows solid understanding, but the Ebbinghaus Forgetting Curve predicts ~22% memory loss after one week without review. Two sessions per week keeps retention above 78%.`;
 
+    let weeklyRecommendation = `Based on your score of <strong>${accuracy}%</strong>, we recommend practicing this topic <strong>2 times a week</strong> to solidify your recall and convert short-term learning into permanent memory.`;
     if (status === 'solidified') {
-      weeklyRecommendation = `Outstanding performance! Based on your high score of <strong>${accuracy}%</strong> and confident self-ratings, we recommend practicing this topic <strong>1 time a week</strong> for long-term memory maintenance.`;
+      weeklyRecommendation = `Outstanding! Your high score of <strong>${accuracy}%</strong> and confident ratings mean <strong>1 weekly maintenance review</strong> is all you need.`;
     } else if (status === 'decay_risk') {
-      weeklyRecommendation = `Urgent review recommended! Based on your score of <strong>${accuracy}%</strong> (${nopeCount} missed/fuzzy cards), we recommend practicing this topic <strong>3 times a week</strong> (e.g. Tomorrow, Day 2, Day 5) to strengthen your grasp of the concepts.`;
+      weeklyRecommendation = `Urgent review recommended! With a score of <strong>${accuracy}%</strong> (${nopeCount} missed/fuzzy), practice <strong>3 times this week</strong> to stop memory decay.`;
     }
 
     const today = new Date();
+    const stepNames = ['First Memory Reinforcement', 'Deep Recall Practice', 'Mastery Solidification'];
+    const stepGoals = ['Lock short-term memory', 'Consolidate to long-term memory', 'Permanent recall & mastery check'];
+    const stepIcons = ['⚡', '🧠', '🏆'];
+    const stepTips = [
+      'Re-read key definitions, then close your notes and write them from memory.',
+      'Explain each concept out loud using the Feynman Technique — simplest words only.',
+      'Practice a mock quiz or teach a classmate to confirm mastery.'
+    ];
+
     const steps = daysOffset.map((offsetDays, idx) => {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + offsetDays);
-
-      let stepGoal = 'Lock short-term memory';
-      let icon = '⚡';
-      let name = 'First Memory Reinforcement';
-
-      if (idx === 1) {
-        stepGoal = 'Consolidate to long-term memory';
-        icon = '🧠';
-        name = 'Deep Recall Practice';
-      } else if (idx === 2) {
-        stepGoal = 'Permanent recall & mastery check';
-        icon = '🏆';
-        name = 'Mastery Solidification';
-      }
-
       return {
         stepNum: idx + 1,
         offsetDays,
         dateStr: targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
         isoDate: targetDate.toISOString().split('T')[0],
-        name,
-        icon,
-        stepGoal
+        name: stepNames[idx],
+        icon: stepIcons[idx],
+        stepGoal: stepGoals[idx],
+        tip: stepTips[idx]
       };
     });
 
     return {
-      status,
-      cadenceText,
-      retentionPct,
-      weeklyRecommendation,
-      steps,
+      status, cadenceText, retentionPct, weeklyRecommendation, whyReason, steps,
       topic: (session && session.topic) ? session.topic : 'Flashcard Deck',
-      subject: (session && session.subject) ? session.subject : 'General Study'
+      subject: (session && session.subject) ? session.subject : 'General Study',
+      isAI: false
     };
   },
 
+  // ── Day 17: Gemini AI-powered plan generation ─────────────
+  async generateAIPlan(session, accuracy, responses) {
+    const apiKey = localStorage.getItem('ef_gemini_key') || window.EduStore?.getApiKey?.() || '';
+    if (!apiKey) return null; // fallback to heuristic
+
+    let knowCount = 0, fuzzyCount = 0, nopeCount = 0;
+    (responses || []).forEach(r => {
+      if (!r) return;
+      if (r.rating === 'know') knowCount++;
+      else if (r.rating === 'fuzzy') fuzzyCount++;
+      else if (r.rating === 'nope') nopeCount++;
+    });
+
+    const topic = (session && session.topic) ? session.topic : 'General Study';
+    const subject = (session && session.subject) ? session.subject : 'General';
+
+    const prompt = `You are an expert memory coach. A student just completed a flashcard review session with the following stats:
+
+- Subject: ${subject}
+- Topic: ${topic}
+- MCQ Accuracy: ${accuracy}%
+- Know it: ${knowCount} cards | Fuzzy: ${fuzzyCount} cards | Don't Know: ${nopeCount} cards
+
+Based on the Ebbinghaus Forgetting Curve and spaced repetition science, create a personalized 3-step practice schedule.
+
+Return ONLY a valid JSON object (no markdown, no extra text) with this exact shape:
+{
+  "cadenceText": "e.g. 3x / week (Urgent Review)",
+  "retentionPct": 72,
+  "weeklyRecommendation": "Short paragraph explaining the recommended review frequency in plain English using the student's actual score.",
+  "whyReason": "1-2 sentence scientific rationale for the schedule based on their specific performance.",
+  "steps": [
+    { "name": "Step name", "icon": "emoji", "stepGoal": "Short goal", "offsetDays": 1, "tip": "One concrete actionable study tip" },
+    { "name": "Step name", "icon": "emoji", "stepGoal": "Short goal", "offsetDays": 3, "tip": "One concrete actionable study tip" },
+    { "name": "Step name", "icon": "emoji", "stepGoal": "Short goal", "offsetDays": 7, "tip": "One concrete actionable study tip" }
+  ]
+}`;
+
+    try {
+      const models = ['gemini-2.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+      let rawText = null;
+      for (const model of models) {
+        try {
+          const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            }
+          );
+          const data = await resp.json();
+          rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+          if (rawText) break;
+        } catch (_) {}
+      }
+      if (!rawText) return null;
+
+      const jsonStr = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+      const aiPlan = JSON.parse(jsonStr);
+
+      // Build full steps with dates
+      const today = new Date();
+      aiPlan.steps = (aiPlan.steps || []).map((s, idx) => {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + (s.offsetDays || (idx === 0 ? 1 : idx === 1 ? 3 : 7)));
+        return {
+          ...s,
+          stepNum: idx + 1,
+          dateStr: targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          isoDate: targetDate.toISOString().split('T')[0]
+        };
+      });
+
+      aiPlan.topic = topic;
+      aiPlan.subject = subject;
+      aiPlan.status = aiPlan.retentionPct >= 85 ? 'solidified' : aiPlan.retentionPct < 65 ? 'decay_risk' : 'moderate';
+      aiPlan.isAI = true;
+      return aiPlan;
+    } catch (err) {
+      console.warn('[PracticePlannerEngine] AI plan generation failed:', err);
+      return null;
+    }
+  },
+
+  // ── Day 17: Draw Ebbinghaus Retention Curve on Canvas ──────
+  drawRetentionCurve(canvas, plan) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.offsetWidth || 480;
+    const H = 100;
+    canvas.width = W;
+    canvas.height = H;
+
+    // Day labels across 30 days
+    const dayPoints = [0, 1, 2, 3, 7, 14, 21, 30];
+    // Ebbinghaus forgetting curve: R = e^(-t/S) where S varies by initial strength
+    const S = plan.retentionPct >= 85 ? 18 : plan.retentionPct >= 65 ? 10 : 5;
+    const retentionAtDay = (d) => Math.round(100 * Math.exp(-d / S));
+
+    const PAD_LEFT = 10, PAD_RIGHT = 10, PAD_TOP = 12, PAD_BOTTOM = 18;
+    const chartW = W - PAD_LEFT - PAD_RIGHT;
+    const chartH = H - PAD_TOP - PAD_BOTTOM;
+
+    const xOfDay = d => PAD_LEFT + (d / 30) * chartW;
+    const yOfPct = p => PAD_TOP + chartH - (p / 100) * chartH;
+
+    // Background
+    ctx.clearRect(0, 0, W, H);
+
+    // Gradient fill under curve
+    const grad = ctx.createLinearGradient(0, PAD_TOP, 0, PAD_TOP + chartH);
+    grad.addColorStop(0, 'rgba(52,168,83,0.18)');
+    grad.addColorStop(1, 'rgba(52,168,83,0.01)');
+
+    // Draw curve path
+    ctx.beginPath();
+    ctx.moveTo(xOfDay(0), yOfPct(100));
+    for (let d = 0; d <= 30; d++) {
+      ctx.lineTo(xOfDay(d), yOfPct(retentionAtDay(d)));
+    }
+    // Fill
+    ctx.lineTo(xOfDay(30), PAD_TOP + chartH);
+    ctx.lineTo(xOfDay(0), PAD_TOP + chartH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Stroke the curve
+    ctx.beginPath();
+    ctx.moveTo(xOfDay(0), yOfPct(100));
+    for (let d = 0; d <= 30; d++) {
+      ctx.lineTo(xOfDay(d), yOfPct(retentionAtDay(d)));
+    }
+    ctx.strokeStyle = 'rgba(52,168,83,0.7)';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Mark review day dots
+    const reviewDays = (plan.steps || []).map(s => s.offsetDays || 0);
+    reviewDays.forEach(d => {
+      const x = xOfDay(d);
+      const pct = retentionAtDay(d);
+      const y = yOfPct(pct);
+
+      // Recovery line up from curve point
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, yOfPct(Math.min(100, pct + 22)));
+      ctx.strokeStyle = 'rgba(52,168,83,0.4)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Dot on curve
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#34a853';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Day label below
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`D${d}`, x, PAD_TOP + chartH + 13);
+    });
+
+    // Horizontal 50% guide line
+    ctx.beginPath();
+    ctx.moveTo(PAD_LEFT, yOfPct(50));
+    ctx.lineTo(W - PAD_RIGHT, yOfPct(50));
+    ctx.strokeStyle = 'rgba(251,188,4,0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(251,188,4,0.5)';
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('50%', PAD_LEFT + 2, yOfPct(50) - 3);
+  },
+
+  // ── Render Widget on completion screen ─────────────────────
   renderWidget(session, accuracy, responses) {
     const cardEl = document.getElementById('practice-planner-card');
     if (!cardEl) return;
 
     cardEl.style.display = 'block';
 
+    // Apply heuristic plan instantly for fast render
     const plan = this.calculatePlan(session, accuracy, responses);
     this.currentPlan = plan;
     this.currentSession = session;
+    this._applyPlanToUI(plan);
 
+    // Restore persisted time preference
+    const savedTime = localStorage.getItem('ef_planner_time') || '16:00';
+    this.selectedTime = savedTime;
+    const chips = document.querySelectorAll('.planner-time-chip');
+    chips.forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.time === savedTime);
+      chip.onclick = () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        this.selectedTime = chip.dataset.time || '16:00';
+        localStorage.setItem('ef_planner_time', this.selectedTime);
+      };
+    });
+
+    const saveBtn = document.getElementById('btn-save-plan');
+    if (saveBtn) saveBtn.onclick = () => this.saveToStudyPlan();
+
+    const exportBtn = document.getElementById('btn-export-ics');
+    if (exportBtn) exportBtn.onclick = () => this.exportICS();
+
+    // Day 17: Wire AI Plan button
+    const aiBtn = document.getElementById('btn-generate-ai-plan');
+    if (aiBtn) {
+      aiBtn.onclick = async () => {
+        aiBtn.disabled = true;
+        aiBtn.textContent = '⏳ Generating…';
+        const loadingEl = document.getElementById('planner-ai-loading');
+        const bodyEl = document.getElementById('planner-card-body');
+        if (loadingEl) loadingEl.style.display = 'flex';
+        if (bodyEl) bodyEl.style.opacity = '0.4';
+
+        const aiPlan = await this.generateAIPlan(session, accuracy, responses);
+
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (bodyEl) bodyEl.style.opacity = '1';
+
+        if (aiPlan) {
+          this.currentPlan = aiPlan;
+          this._applyPlanToUI(aiPlan);
+          aiBtn.textContent = '✅ AI Plan Active';
+          if (typeof showToast !== 'undefined') showToast('✨ Gemini generated your personalized plan!', 'success');
+        } else {
+          aiBtn.disabled = false;
+          aiBtn.textContent = '✨ AI Plan';
+          if (typeof showToast !== 'undefined') showToast('⚠️ AI plan unavailable — using smart defaults. Add your Gemini API key in Settings to enable.', 'info');
+        }
+      };
+    }
+
+    // Day 17: Wire Why accordion
+    this.initWhySection();
+
+    // Draw retention curve
+    setTimeout(() => {
+      const canvas = document.getElementById('retention-curve-canvas');
+      if (canvas) this.drawRetentionCurve(canvas, plan);
+    }, 80);
+  },
+
+  // ── Apply a plan object to all UI elements ─────────────────
+  _applyPlanToUI(plan) {
     const cadenceBadge = document.getElementById('planner-cadence-badge');
     if (cadenceBadge) {
       cadenceBadge.textContent = plan.cadenceText;
-      if (plan.status === 'decay_risk') {
-        cadenceBadge.style.background = 'rgba(234,67,53,0.15)';
-        cadenceBadge.style.borderColor = 'rgba(234,67,53,0.4)';
-        cadenceBadge.style.color = '#f28b82';
-      } else if (plan.status === 'solidified') {
-        cadenceBadge.style.background = 'rgba(52,168,83,0.15)';
-        cadenceBadge.style.borderColor = 'rgba(52,168,83,0.4)';
-        cadenceBadge.style.color = 'var(--green-light)';
-      } else {
-        cadenceBadge.style.background = 'rgba(251,188,4,0.15)';
-        cadenceBadge.style.borderColor = 'rgba(251,188,4,0.4)';
-        cadenceBadge.style.color = 'var(--yellow)';
-      }
+      const colors = {
+        decay_risk: { bg: 'rgba(234,67,53,0.15)', border: 'rgba(234,67,53,0.4)', color: '#f28b82' },
+        solidified:  { bg: 'rgba(52,168,83,0.15)', border: 'rgba(52,168,83,0.4)', color: 'var(--green-light)' },
+        moderate:    { bg: 'rgba(251,188,4,0.15)', border: 'rgba(251,188,4,0.4)', color: 'var(--yellow)' }
+      };
+      const c = colors[plan.status] || colors.moderate;
+      Object.assign(cadenceBadge.style, { background: c.bg, borderColor: c.border, color: c.color });
     }
 
     const recTextEl = document.getElementById('planner-recommendation-text');
     if (recTextEl) recTextEl.innerHTML = plan.weeklyRecommendation;
 
     const rateEl = document.getElementById('planner-retention-rate');
-    const barEl = document.getElementById('planner-forecast-bar');
-    const hintEl = document.getElementById('planner-forecast-hint');
-
     if (rateEl) rateEl.textContent = `${plan.retentionPct}% Projected Recall`;
-    if (barEl) barEl.style.width = `${plan.retentionPct}%`;
+
+    const hintEl = document.getElementById('planner-forecast-hint');
     if (hintEl) {
       if (plan.status === 'decay_risk') {
-        hintEl.textContent = '⚠️ Memory decay risk is high for this topic! Practice tomorrow to prevent forgetting key details.';
+        hintEl.textContent = '⚠️ Memory decay risk is high! Review tomorrow to prevent forgetting key concepts.';
       } else if (plan.status === 'solidified') {
-        hintEl.textContent = '🌟 Excellent recall! Spaced maintenance reviews will keep this topic locked in your memory indefinitely.';
+        hintEl.textContent = '🌟 Excellent recall! Spaced maintenance reviews will keep this topic in long-term memory.';
       } else {
-        hintEl.textContent = '💡 Practicing on the recommended dates below converts short-term memory into permanent recall.';
+        hintEl.textContent = '💡 Review on the marked dates to stay above the 50% retention threshold.';
       }
     }
 
+    // Update Why reason text
+    const whyText = document.getElementById('planner-why-text');
+    if (whyText && plan.whyReason) whyText.textContent = plan.whyReason;
+
+    // Badge if AI-generated
+    const titleEl = document.getElementById('planner-recommendation-title');
+    if (titleEl) {
+      titleEl.innerHTML = plan.isAI
+        ? 'Weekly Practice Recommendation <span style="background:rgba(52,168,83,0.2);border:1px solid rgba(52,168,83,0.4);color:var(--green-light);font-size:0.65rem;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;">✨ AI</span>'
+        : 'Weekly Practice Recommendation';
+    }
+
+    // Render timeline steps
     const timelineEl = document.getElementById('planner-timeline');
     if (timelineEl) {
       timelineEl.innerHTML = plan.steps.map(s => `
@@ -2821,9 +3075,10 @@ const PracticePlannerEngine = {
             <div>
               <div class="planner-step-name">${s.name}</div>
               <div class="planner-step-goal">${s.stepGoal}</div>
+              ${s.tip ? `<div style="font-size:0.68rem; color:var(--text-dim); margin-top:2px; font-style:italic;">💡 ${s.tip}</div>` : ''}
             </div>
           </div>
-          <div style="text-align:right;">
+          <div style="text-align:right; flex-shrink:0;">
             <div class="planner-step-date">${s.dateStr}</div>
             <div style="font-size:0.68rem; color:var(--text-dim);">Due in ${s.offsetDays} day${s.offsetDays > 1 ? 's' : ''}</div>
           </div>
@@ -2831,26 +3086,26 @@ const PracticePlannerEngine = {
       `).join('');
     }
 
-    const chips = document.querySelectorAll('.planner-time-chip');
-    chips.forEach(chip => {
-      chip.onclick = () => {
-        chips.forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        this.selectedTime = chip.dataset.time || '16:00';
-      };
-    });
-
-    const saveBtn = document.getElementById('btn-save-plan');
-    if (saveBtn) {
-      saveBtn.onclick = () => this.saveToStudyPlan();
-    }
-
-    const exportBtn = document.getElementById('btn-export-ics');
-    if (exportBtn) {
-      exportBtn.onclick = () => this.exportICS();
-    }
+    // Redraw curve with new plan
+    setTimeout(() => {
+      const canvas = document.getElementById('retention-curve-canvas');
+      if (canvas) this.drawRetentionCurve(canvas, plan);
+    }, 60);
   },
 
+  // ── Day 17: Why Accordion ───────────────────────────────────
+  initWhySection() {
+    const toggle = document.getElementById('planner-why-toggle');
+    const body = document.getElementById('planner-why-body');
+    if (!toggle || !body || toggle._wired17) return;
+    toggle._wired17 = true;
+    toggle.addEventListener('click', () => {
+      const isOpen = body.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+  },
+
+  // ── Save & Export ───────────────────────────────────────────
   saveToStudyPlan() {
     if (!this.currentPlan || !this.currentSession) return;
 
@@ -2861,6 +3116,8 @@ const PracticePlannerEngine = {
       cadenceText: this.currentPlan.cadenceText,
       selectedTime: this.selectedTime,
       steps: this.currentPlan.steps,
+      retentionPct: this.currentPlan.retentionPct,
+      isAI: this.currentPlan.isAI || false,
       savedAt: new Date().toISOString()
     };
 
@@ -2868,10 +3125,9 @@ const PracticePlannerEngine = {
 
     if (typeof showToast !== 'undefined') {
       showToast('📌 Practice schedule saved to My Planner!', 'success');
-    } else {
-      alert('📌 Practice schedule saved to My Planner!');
     }
 
+    // Update badge immediately
     this.updateNavBadge();
   },
 
@@ -2892,17 +3148,13 @@ const PracticePlannerEngine = {
     this.currentPlan.steps.forEach(step => {
       const d = new Date(step.isoDate);
       d.setHours(hours || 16, minutes || 0, 0, 0);
-
       const endD = new Date(d.getTime() + 15 * 60 * 1000);
-
-      const formatICSDate = (dateObj) => {
-        return dateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-      };
+      const formatICSDate = (dateObj) => dateObj.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
 
       icsContent.push(
         'BEGIN:VEVENT',
         `SUMMARY:📚 EduFlash AI Review: ${topic}`,
-        `DESCRIPTION:Scheduled flashcard practice session for ${topic}. Goal: ${step.stepGoal}`,
+        `DESCRIPTION:${step.name} — ${step.stepGoal}${step.tip ? '. Tip: ' + step.tip : ''}`,
         `DTSTART:${formatICSDate(d)}`,
         `DTEND:${formatICSDate(endD)}`,
         `STATUS:CONFIRMED`,
@@ -2920,14 +3172,12 @@ const PracticePlannerEngine = {
     const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `EduFlash_Practice_Plan_${topic.replace(/\s+/g, '_')}.ics`;
+    link.download = `EduFlash_Practice_Plan_${topic.replace(/\s+/g,'_')}.ics`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    if (typeof showToast !== 'undefined') {
-      showToast('📅 iCalendar (.ics) file downloaded!', 'success');
-    }
+    if (typeof showToast !== 'undefined') showToast('📅 iCalendar (.ics) file downloaded!', 'success');
   },
 
   updateNavBadge() {
@@ -2935,12 +3185,8 @@ const PracticePlannerEngine = {
     const list = window.EduStore.getPlannerSchedule();
     const badgeEl = document.getElementById('nav-planner-badge');
     if (badgeEl) {
-      if (list.length > 0) {
-        badgeEl.style.display = 'inline-block';
-        badgeEl.textContent = list.length;
-      } else {
-        badgeEl.style.display = 'none';
-      }
+      badgeEl.style.display = list.length > 0 ? 'inline-block' : 'none';
+      badgeEl.textContent = list.length;
     }
   },
 
@@ -2961,7 +3207,7 @@ const PracticePlannerEngine = {
     };
 
     if (closeBtn) closeBtn.onclick = () => overlay.style.display = 'none';
-    if (doneBtn) doneBtn.onclick = () => overlay.style.display = 'none';
+    if (doneBtn)  doneBtn.onclick  = () => overlay.style.display = 'none';
     if (clearBtn) {
       clearBtn.onclick = () => {
         window.EduStore.savePlannerSchedule([]);
@@ -2988,25 +3234,42 @@ const PracticePlannerEngine = {
       return;
     }
 
-    modalBody.innerHTML = list.map(item => `
-      <div class="planner-modal-item">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-          <div>
-            <div style="font-weight:700; font-size:0.92rem; color:var(--green-light);">${escapeHTML(item.topic)}</div>
-            <div style="font-size:0.74rem; color:var(--text-dim);">${escapeHTML(item.subject)} · Cadence: ${item.cadenceText}</div>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="PracticePlannerEngine.removeItem('${item.sessionId}')" style="color:#f28b82; padding:2px 6px;">&times; Remove</button>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          ${(item.steps || []).map(s => `
-            <div style="display:flex; justify-content:space-between; font-size:0.75rem; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px;">
-              <span>${s.icon} ${s.name}</span>
-              <span style="color:var(--green-light); font-weight:600;">${s.dateStr} @ ${item.selectedTime || '16:00'}</span>
+    const today = new Date();
+    modalBody.innerHTML = list.map(item => {
+      // Compute next upcoming step
+      const nextStep = (item.steps || []).find(s => new Date(s.isoDate) >= today);
+      const nextDateStr = nextStep ? nextStep.dateStr : 'All done!';
+      const isOverdue = !nextStep && (item.steps || []).length > 0;
+
+      return `
+        <div class="planner-modal-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div>
+              <div style="font-weight:700; font-size:0.92rem; color:var(--green-light); display:flex; align-items:center; gap:6px;">
+                ${escapeHTML(item.topic)}
+                ${item.isAI ? '<span style="background:rgba(52,168,83,0.15);border:1px solid rgba(52,168,83,0.3);color:var(--green-light);font-size:0.62rem;padding:1px 5px;border-radius:6px;">✨ AI</span>' : ''}
+              </div>
+              <div style="font-size:0.74rem; color:var(--text-dim);">${escapeHTML(item.subject)} · ${item.cadenceText}</div>
+              <div style="font-size:0.72rem; color:${isOverdue ? '#f28b82' : 'var(--green-light)'}; margin-top:2px; font-weight:600;">
+                ${isOverdue ? '⚠️ All reviews completed' : `⏰ Next: ${nextDateStr} @ ${item.selectedTime || '16:00'}`}
+              </div>
             </div>
-          `).join('')}
+            <button class="btn btn-ghost btn-sm" onclick="PracticePlannerEngine.removeItem('${item.sessionId}')" style="color:#f28b82; padding:2px 6px;">&times; Remove</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            ${(item.steps || []).map(s => {
+              const isPast = new Date(s.isoDate) < today;
+              return `
+                <div style="display:flex; justify-content:space-between; font-size:0.74rem; background:rgba(255,255,255,0.03); padding:5px 8px; border-radius:6px; opacity:${isPast ? '0.5' : '1'};">
+                  <span>${s.icon} ${s.name}${isPast ? ' <span style="color:var(--text-dim);">(done)</span>' : ''}</span>
+                  <span style="color:${isPast ? 'var(--text-dim)' : 'var(--green-light)'}; font-weight:600;">${s.dateStr}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   },
 
   removeItem(sessionId) {

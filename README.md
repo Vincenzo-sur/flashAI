@@ -63,6 +63,7 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 14: Achievement & XP Leaderboard System, AI Adaptive Study Paths** — XP engine with 5 levels and 6 unlockable badges, animated level-up modal, class leaderboard in teacher Analytics, Gemini-powered personalized study path generator (Day 14)
 - [x] **Day 15: Purposeful Student Growth, Real-World Perks, AI Scenario Challenges & Smart Session Resume** — Real-world competency tier mapping (Industry-Ready Master, Subject Lead, Practical Specialist), Real-World Perks Hub on student completion screen, Gemini AI-powered Real-World Scenario Challenge modal, Teacher Real-World Perks & Competency Qualifications matrix tab, automatic session progress resume memory, and interactive visual card breakdown grid (Day 15)
 - [x] **Day 16: Personalized AI Practice Planner & Memory Retention Schedule** — AI practice frequency generator based on student score and self-ratings, memory retention forecast timeline bar, preferred study time selector, 1-click `.ics` iCalendar download, and persistent student practice schedule drawer (Day 16)
+- [x] **Day 17: AI-Powered Practice Planner Optimization & Class Practice Tracker** — Gemini AI-generated personalized practice schedule (replaces static heuristic), Ebbinghaus Forgetting Curve canvas visualization with review-date dots, collapsible "Why this schedule?" accordion with scientific rationale, study time preference persistence across sessions, AI Plan badge on Gemini-generated schedules, enhanced My Planner modal with next-review ETA and past-step greying, and Teacher Class Practice Tracker panel (Analytics → Practice Tracker) with status badges, summary chips, and Remind All copyable message generator (Day 17)
 
 ---
 
@@ -202,6 +203,14 @@ cd flashAI
   - 🎉 **Animated Level-Up Celebration Modal** — glassmorphism popup with rank title, particle burst, and sound FX on level progression.
   - 🧭 **AI Adaptive Study Path** — Gemini-powered personalized topic priority queue analyzing accuracy, review count, and Leitner overdue cards, with offline heuristic fallback.
   - 🏆 **Teacher Class Leaderboard** — ranked table in Analytics Overview showing student XP, levels, session counts, and avg accuracy with medal indicators for top 3.
+- [x] **Day 17: AI-Powered Practice Planner Optimization & Class Practice Tracker**
+  - 🤖 **Gemini AI-Generated Schedule** — replaces static 3-bucket heuristic; Gemini receives score, self-ratings & topic to return custom intervals, scientific rationale, and per-step study tips.
+  - 📈 **Ebbinghaus Retention Curve Canvas** — canvas-drawn 30-day forgetting curve with gradient fill, green review-date dots, dashed recovery lines, and 50% threshold guide.
+  - 💡 **"Why this schedule?" Accordion** — collapsible section with scientific Ebbinghaus rationale; text updated dynamically for AI-generated plans.
+  - 🕐 **Persistent Study Time Preference** — selected time chip saved to `localStorage` and restored on next session.
+  - ✨ **AI Plan Badge** — recommendation title shows "✨ AI" badge when Gemini generated the plan vs heuristic fallback.
+  - 🗓️ **Enhanced My Planner Modal** — shows next review ETA with exact date/time, greys out past completed steps, and AI badge per plan.
+  - 🏫 **Teacher Class Practice Tracker** — new Analytics → Practice Tracker panel with status table (On Track / Overdue / Not Started), summary chips, and 🔔 Remind All button that generates a copyable student reminder message.
 
 
 

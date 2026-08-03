@@ -147,6 +147,12 @@
                   <span class="nav-sub-dot"></span>
                   AI Suggestions
                 </div>
+                <!-- Day 17: Practice Tracker -->
+                <div class="nav-sub-item" data-panel="practice-tracker" id="sub-practice-tracker">
+                  <span class="nav-sub-dot"></span>
+                  📅 Practice Tracker
+                  <span class="nav-sub-badge" style="background:rgba(52,168,83,0.15); color:var(--green-light); border:1px solid rgba(52,168,83,0.4);">Day 17</span>
+                </div>
               </div>
             </div>
           </div>
@@ -839,6 +845,36 @@
           </p>
           <div class="suggestions-list" id="suggestions-list-container">
             <!-- Dynamic suggestions cards -->
+          </div>
+        </div>
+
+        <!-- Day 17: Panel: Class Practice Tracker -->
+        <div class="panel-content" id="panel-practice-tracker" role="tabpanel">
+          <div class="sessions-toolbar" style="margin-bottom: 20px;">
+            <div>
+              <span class="sessions-title">📅 Class Practice Tracker</span>
+              <span class="sessions-count">Students who have scheduled AI practice plans</span>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-outline btn-sm" id="btn-tracker-refresh">🔄 Refresh</button>
+              <button class="btn btn-green btn-sm" id="btn-remind-all">🔔 Remind All Students</button>
+            </div>
+          </div>
+
+          <!-- Remind All message preview banner -->
+          <div class="remind-all-banner" id="remind-all-banner" style="display:none;">
+            <div class="remind-all-banner-header">
+              <span>📣 Shareable Reminder Message</span>
+              <button class="btn btn-outline btn-sm" id="btn-copy-reminder" style="padding:3px 10px; font-size:0.74rem;">📋 Copy</button>
+            </div>
+            <div class="remind-all-banner-body" id="remind-all-message"></div>
+          </div>
+
+          <!-- Tracker Table -->
+          <div id="practice-tracker-container">
+            <p style="font-size:0.85rem; color:var(--text-dim); text-align:center; padding:30px 0;">
+              📅 No practice plans saved yet. Students who save plans after completing a session will appear here.
+            </p>
           </div>
         </div>
 
