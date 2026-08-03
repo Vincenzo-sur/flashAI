@@ -2054,6 +2054,13 @@ Return ONLY valid JSON. No markdown, no explanations.`;
       if (typeof renderRealWorldPerksHub === 'function') renderRealWorldPerksHub();
       // Day 15: render Session Summary Grid
       if (typeof renderSessionSummaryGrid === 'function') renderSessionSummaryGrid();
+      // Day 16 + Day 17: render Practice Planner card fallback
+      if (typeof PracticePlannerEngine !== 'undefined' && currentSession) {
+        const acc = sessionAnswers.length > 0
+          ? Math.round((sessionAnswers.filter(a => a.isCorrect).length / sessionAnswers.length) * 100)
+          : 100;
+        PracticePlannerEngine.renderWidget(currentSession, acc, sessionAnswers);
+      }
     }
   });
   mo.observe(completionContainer, { attributes: true, attributeFilter: ['class','style'], childList: true });
