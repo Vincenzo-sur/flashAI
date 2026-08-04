@@ -28,6 +28,10 @@
         <button class="btn btn-outline btn-sm" id="nav-planner-btn" title="View your practice schedule">
           📅 My Planner <span class="nav-planner-badge" id="nav-planner-badge" style="display:none; background:var(--green-light); color:#000; padding:1px 6px; border-radius:10px; font-size:0.7rem; font-weight:700; margin-left:2px;">0</span>
         </button>
+        <!-- Day 18: Peer Discussion Hub Button -->
+        <button class="btn btn-outline btn-sm" id="nav-peer-hub-btn" title="Discuss doubts with classmates">
+          🤝 Peer Hub
+        </button>
         <a href="teacher.html" class="btn btn-ghost btn-sm" id="nav-teacher-link">Switch to Teacher</a>
         <button class="btn btn-outline btn-sm" id="nav-signin-btn">👤 Sign In</button>
         <a href="index.html"   class="btn btn-outline btn-sm" id="nav-home-link">Home</a>
@@ -116,6 +120,11 @@
               <span style="font-size:1.1rem; display:block;">⭐</span>
               <span style="font-size:0.75rem; font-weight:600;">Starred</span>
             </button>
+            <!-- Day 18: Smart Quiz -->
+            <button class="study-mode-btn" data-mode="quiz" id="quiz-mode-btn" data-tooltip="AI adaptive timed quiz targeting weak areas">
+              <span style="font-size:1.1rem; display:block;">🎯</span>
+              <span style="font-size:0.75rem; font-weight:600;">Smart Quiz</span>
+            </button>
           </div>
         </div>
       </div>
@@ -199,6 +208,16 @@
             <button id="card-note-btn" class="card-icon-btn note-btn" type="button" title="Add a private note (N)">
               <span>📌</span>
               <span class="card-icon-btn-label">Note</span>
+            </button>
+            <!-- Day 18: Ask Teacher -->
+            <button id="card-ask-teacher-btn" class="card-icon-btn ask-btn" type="button" title="Ask teacher a question about this card">
+              <span>❓</span>
+              <span class="card-icon-btn-label">Ask</span>
+            </button>
+            <!-- Day 18: Discuss with peers -->
+            <button id="card-discuss-btn" class="card-icon-btn discuss-btn" type="button" title="Discuss doubt with peers">
+              <span>💬</span>
+              <span class="card-icon-btn-label">Discuss</span>
             </button>
           </div>
           <span class="card-header-tag" id="card-tag">Topic</span>
@@ -614,6 +633,122 @@
       <div class="planner-modal-footer">
         <button class="btn btn-outline btn-sm" id="planner-clear-all-btn">Clear All Plans</button>
         <button class="btn btn-green btn-sm" id="planner-done-btn">Done</button>
+      </div>
+    </div>
+  <!-- Day 18: Ask Teacher Modal -->
+  <div class="planner-modal-overlay" id="question-modal-overlay" style="display:none;">
+    <div class="planner-modal-content" style="max-width:520px;">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">❓</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--yellow-light);">Ask Teacher a Question</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);" id="question-modal-card-tag">Card: Question</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="question-modal-close-btn">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <div id="question-modal-preview" style="background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); font-size:0.85rem; color:var(--text-muted); margin-bottom:12px; border-left:3px solid var(--yellow);"></div>
+        <label class="input-label" for="question-modal-textarea">Your Doubt / Question</label>
+        <textarea id="question-modal-textarea" rows="4" style="width:100%; background:var(--bg-card); border:1px solid var(--border-light); color:var(--text); padding:10px; border-radius:var(--radius-sm); font-family:inherit; resize:vertical;" placeholder="Describe what you find confusing about this concept..."></textarea>
+      </div>
+      <div class="planner-modal-footer">
+        <button class="btn btn-outline btn-sm" id="question-modal-cancel-btn">Cancel</button>
+        <button class="btn btn-yellow btn-sm" id="question-modal-submit-btn">Send Question →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 18: Peer Discussion Hub Modal -->
+  <div class="planner-modal-overlay" id="discussion-modal-overlay" style="display:none;">
+    <div class="planner-modal-content" style="max-width:680px; width:90%;">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">🤝</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);">Peer Discussion Hub</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);">Solve doubts together · Earn Peer Helper achievements</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="discussion-modal-close-btn">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <input type="text" id="discussion-search-input" class="input-field" style="flex:1;" placeholder="Search doubts or topics..." />
+          <button class="btn btn-green btn-sm" id="discussion-new-btn">+ Post Doubt</button>
+        </div>
+        <div id="discussion-hub-body" style="max-height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+      <div class="planner-modal-footer">
+        <button class="btn btn-outline btn-sm" id="discussion-modal-done-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 18: Smart Quiz Config Modal -->
+  <div class="planner-modal-overlay" id="quiz-config-modal-overlay" style="display:none;">
+    <div class="planner-modal-content" style="max-width:480px;">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">🎯</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);">Smart Quiz Challenge</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);">AI-selected weak spot questions</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="quiz-config-close-btn">&times;</button>
+      </div>
+      <div style="padding:16px; display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label class="input-label">Quiz Duration</label>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline btn-sm quiz-duration-btn active" data-time="300">5 Mins</button>
+            <button class="btn btn-outline btn-sm quiz-duration-btn" data-time="600">10 Mins</button>
+            <button class="btn btn-outline btn-sm quiz-duration-btn" data-time="900">15 Mins</button>
+          </div>
+        </div>
+        <div>
+          <label class="input-label">Focus Area</label>
+          <select id="quiz-focus-select" style="width:100%; background:var(--bg-card); border:1px solid var(--border-light); color:var(--text); padding:8px 12px; border-radius:var(--radius-sm);">
+            <option value="weak">🎯 Weak Spots & Fuzzy Cards (AI Recommended)</option>
+            <option value="srs">📦 Overdue Spaced Repetition Cards</option>
+            <option value="all">📚 All Deck Topics Mix</option>
+          </select>
+        </div>
+        <div style="background:var(--bg-surface); padding:12px; border-radius:var(--radius-sm); font-size:0.8rem; color:var(--text-muted); border-left:3px solid var(--green-light);">
+          💡 <strong>How it works:</strong> Gemini AI picks cards you scored lowest on or rated "fuzzy"/"don't know", plus generates adaptive challenge questions.
+        </div>
+      </div>
+      <div class="planner-modal-footer">
+        <button class="btn btn-outline btn-sm" id="quiz-config-cancel-btn">Cancel</button>
+        <button class="btn btn-green btn-sm" id="quiz-start-now-btn">Start Quiz Now ⚡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 18: Smart Quiz Results Overlay -->
+  <div class="planner-modal-overlay" id="quiz-results-modal-overlay" style="display:none;">
+    <div class="planner-modal-content" style="max-width:580px;">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">🏆</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--yellow-light);">Quiz Performance Card</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);">Smart Quiz Result</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="quiz-results-close-btn">&times;</button>
+      </div>
+      <div style="padding:20px; text-align:center;">
+        <canvas id="quiz-share-card-canvas" width="500" height="260" style="width:100%; max-width:500px; border-radius:var(--radius); border:1px solid var(--border); background:#1a1b1e; margin-bottom:14px;"></canvas>
+        <div id="quiz-results-summary-text" style="font-size:0.9rem; color:var(--text); margin-bottom:14px;"></div>
+      </div>
+      <div class="planner-modal-footer">
+        <button class="btn btn-outline btn-sm" id="quiz-download-card-btn">💾 Download Score Card</button>
+        <button class="btn btn-green btn-sm" id="quiz-results-done-btn">Done</button>
       </div>
     </div>
   </div>

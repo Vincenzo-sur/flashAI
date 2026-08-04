@@ -10,7 +10,9 @@
 const STORE_KEYS = {
   SESSIONS: 'ef_sessions',
   API_KEY: 'ef_gemini_api_key',
-  PLANNER: 'ef_student_planner'
+  PLANNER: 'ef_student_planner',
+  QUESTIONS: 'ef_student_questions',
+  DISCUSSIONS: 'ef_peer_discussions'
 };
 
 // Initial mock sessions to populate if the store is empty
@@ -359,6 +361,97 @@ const EduStore = {
     const list = this.getPlannerSchedule().filter(i => i.sessionId !== sessionId);
     this.savePlannerSchedule(list);
     return list;
+  },
+
+  // ── Student → Teacher Questions ─────────────────────────────
+  getQuestions() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE_KEYS.QUESTIONS)) || [];
+    } catch {
+      return [];
+    }
+  },
+  saveQuestions(questions) {
+    localStorage.setItem(STORE_KEYS.QUESTIONS, JSON.stringify(questions));
+  },
+  addQuestion(questionObj) {
+    const questions = this.getQuestions();
+    questions.unshift(questionObj);
+    this.saveQuestions(questions);
+    return questions;
+  },
+  replyToQuestion(questionId, replyText) {
+    const questions = this.getQuestions();
+    const q = questions.find(item => item.id === questionId);
+    if (q) {
+      q.reply = replyText;
+      q.repliedAt = new Date().toISOString();
+      q.status = 'answered';
+      this.saveQuestions(questions);
+    }
+    return questions;
+  },
+  toggleQuestionResolved(questionId) {
+    const questions = this.getQuestions();
+    const q = questions.find(item => item.id === questionId);
+    if (q) {
+      q.status = q.status === 'resolved' ? (q.reply ? 'answered' : 'pending') : 'resolved';
+      this.saveQuestions(questions);
+    }
+    return questions;
+  },
+
+  // ── Student ↔ Student Peer Discussions ──────────────────────
+  getDiscussions() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE_KEYS.DISCUSSIONS)) || [];
+    } catch {
+      return [];
+    }
+  },
+  saveDiscussions(discussions) {
+    localStorage.setItem(STORE_KEYS.DISCUSSIONS, JSON.stringify(discussions));
+  },
+  addDiscussion(discussionObj) {
+    const discussions = this.getDiscussions();
+    discussions.unshift(discussionObj);
+    this.saveDiscussions(discussions);
+    return discussionObj;
+  },
+  addDiscussionReply(discussionId, replyObj) {
+    const discussions = this.getDiscussions();
+    const d = discussions.find(item => item.id === discussionId);
+    if (d) {
+      if (!d.replies) d.replies = [];
+      d.replies.push(replyObj);
+      d.updatedAt = new Date().toISOString();
+      this.saveDiscussions(discussions);
+    }
+    return d;
+  },
+  upvoteReply(discussionId, replyId) {
+    const discussions = this.getDiscussions();
+    const d = discussions.find(item => item.id === discussionId);
+    if (d && d.replies) {
+      const r = d.replies.find(item => item.id === replyId);
+      if (r) {
+        r.upvotes = (r.upvotes || 0) + 1;
+        this.saveDiscussions(discussions);
+      }
+    }
+    return d;
+  },
+  markBestAnswer(discussionId, replyId) {
+    const discussions = this.getDiscussions();
+    const d = discussions.find(item => item.id === discussionId);
+    if (d && d.replies) {
+      d.replies.forEach(r => {
+        r.isBest = (r.id === replyId) ? !r.isBest : false;
+      });
+      d.isResolved = d.replies.some(r => r.isBest);
+      this.saveDiscussions(discussions);
+    }
+    return d;
   }
 };
 

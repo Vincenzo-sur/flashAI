@@ -64,6 +64,7 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 15: Purposeful Student Growth, Real-World Perks, AI Scenario Challenges & Smart Session Resume** — Real-world competency tier mapping (Industry-Ready Master, Subject Lead, Practical Specialist), Real-World Perks Hub on student completion screen, Gemini AI-powered Real-World Scenario Challenge modal, Teacher Real-World Perks & Competency Qualifications matrix tab, automatic session progress resume memory, and interactive visual card breakdown grid (Day 15)
 - [x] **Day 16: Personalized AI Practice Planner & Memory Retention Schedule** — AI practice frequency generator based on student score and self-ratings, memory retention forecast timeline bar, preferred study time selector, 1-click `.ics` iCalendar download, and persistent student practice schedule drawer (Day 16)
 - [x] **Day 17: AI-Powered Practice Planner Optimization & Class Practice Tracker** — Gemini AI-generated personalized practice schedule (replaces static heuristic), Ebbinghaus Forgetting Curve canvas visualization with review-date dots, collapsible "Why this schedule?" accordion with scientific rationale, study time preference persistence across sessions, AI Plan badge on Gemini-generated schedules, enhanced My Planner modal with next-review ETA and past-step greying, and Teacher Class Practice Tracker panel (Analytics → Practice Tracker) with status badges, summary chips, and Remind All copyable message generator (Day 17)
+- [x] **Day 18: Student Question Board, Peer Discussion Hub & Smart Quiz Generator** — One-tap "Ask Teacher" doubt submission on flashcards with teacher Question Board panel and reply workflow, Peer Discussion Hub for student-to-student doubt solving with upvotes and Best Answer system, Smart Quiz adaptive timed challenge mode with canvas score badge generator, and fixed S/N card keyboard shortcuts (Day 18)
 
 ---
 
@@ -211,6 +212,11 @@ cd flashAI
   - ✨ **AI Plan Badge** — recommendation title shows "✨ AI" badge when Gemini generated the plan vs heuristic fallback.
   - 🗓️ **Enhanced My Planner Modal** — shows next review ETA with exact date/time, greys out past completed steps, and AI badge per plan.
   - 🏫 **Teacher Class Practice Tracker** — new Analytics → Practice Tracker panel with status table (On Track / Overdue / Not Started), summary chips, and 🔔 Remind All button that generates a copyable student reminder message.
+- [x] **Day 18: Student Question Board, Peer Discussion Hub & Smart Quiz Generator**
+  - ❓ **Student Question Board** — One-tap "Ask Teacher" button on card back, question submission modal, teacher Question Board sidebar panel (`#panel-questions`), reply workflow, and notification unread badges.
+  - 🤝 **Peer Discussion Hub** — Student-to-student doubt solving modal (`#discussion-modal-overlay`), card/topic filtering, upvote system (`👍`), and Best Answer marking (`⭐`) leveraging the 90% retention peer-teaching effect.
+  - 🎯 **Smart Quiz Generator** — Adaptive timed challenge mode (`data-mode="quiz"`), custom duration selector (5/10/15 min), canvas-drawn shareable performance card, and 1-click PNG download.
+  - ⌨️ **Keyboard Shortcut Fix** — Star (`S`) and Note (`N`) shortcuts now properly execute in student card viewer.
 
 
 

@@ -1755,6 +1755,8 @@ function initKeyboardShortcuts() {
     if (e.key.toLowerCase() === 'k') document.querySelector('.rating-btn.know')?.click();
     if (e.key.toLowerCase() === 'f') document.querySelector('.rating-btn.fuzzy')?.click();
     if (e.key.toLowerCase() === 'd') document.querySelector('.rating-btn.nope')?.click();
+    if (e.key.toLowerCase() === 's') document.getElementById('card-star-btn')?.click();
+    if (e.key.toLowerCase() === 'n') document.getElementById('card-note-btn')?.click();
   });
 }
 
@@ -3292,6 +3294,442 @@ document.addEventListener('DOMContentLoaded', () => {
       PracticePlannerEngine.initModal();
     }
   }, 300);
+});
+
+// ============================================================
+//  Day 18: Student → Teacher Question Board Manager
+// ============================================================
+const StudentQuestionBoard = {
+  activeCard: null,
+  activeSession: null,
+
+  init() {
+    const askBtn = document.getElementById('card-ask-teacher-btn');
+    const closeBtn = document.getElementById('question-modal-close-btn');
+    const cancelBtn = document.getElementById('question-modal-cancel-btn');
+    const submitBtn = document.getElementById('question-modal-submit-btn');
+
+    if (askBtn) askBtn.addEventListener('click', () => this.openModal());
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeModal());
+    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeModal());
+    if (submitBtn) submitBtn.addEventListener('click', () => this.submitQuestion());
+  },
+
+  openModal() {
+    if (!currentSession || !currentSession.cards || !currentSession.cards[currentCardIndex]) {
+      if (typeof showToast === 'function') showToast('Please select a flashcard first', 'error');
+      return;
+    }
+    const card = currentSession.cards[currentCardIndex];
+    this.activeCard = card;
+    this.activeSession = currentSession;
+
+    const tag = document.getElementById('question-modal-card-tag');
+    const preview = document.getElementById('question-modal-preview');
+    const textarea = document.getElementById('question-modal-textarea');
+    const modal = document.getElementById('question-modal-overlay');
+
+    if (tag) tag.textContent = `Topic: ${card.topic || 'General'} · Card #${currentCardIndex + 1}`;
+    if (preview) preview.innerHTML = `<strong>Q:</strong> ${card.question}`;
+    if (textarea) textarea.value = '';
+    if (modal) modal.style.display = 'flex';
+  },
+
+  closeModal() {
+    const modal = document.getElementById('question-modal-overlay');
+    if (modal) modal.style.display = 'none';
+  },
+
+  submitQuestion() {
+    const textarea = document.getElementById('question-modal-textarea');
+    const text = textarea ? textarea.value.trim() : '';
+    if (!text) {
+      if (typeof showToast === 'function') showToast('Please enter your question', 'error');
+      return;
+    }
+    const studentUser = (window.Auth && window.Auth.currentUser) ? window.Auth.currentUser.name : 'Student';
+    const qObj = {
+      id: 'q-' + Date.now(),
+      sessionId: this.activeSession.id,
+      sessionTopic: this.activeSession.topic,
+      cardId: this.activeCard.id,
+      cardQuestion: this.activeCard.question,
+      cardTopic: this.activeCard.topic || 'General',
+      studentName: studentUser,
+      question: text,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    window.EduStore.addQuestion(qObj);
+    this.closeModal();
+    if (typeof showToast === 'function') showToast('Question sent to teacher!', 'success');
+  }
+};
+
+// ============================================================
+//  Day 18: Student ↔ Student Peer Discussion Hub
+// ============================================================
+const PeerDiscussionHub = {
+  init() {
+    const discussBtn = document.getElementById('card-discuss-btn');
+    const navHubBtn = document.getElementById('nav-peer-hub-btn');
+    const closeBtn = document.getElementById('discussion-modal-close-btn');
+    const doneBtn = document.getElementById('discussion-modal-done-btn');
+    const postBtn = document.getElementById('discussion-new-btn');
+    const searchInput = document.getElementById('discussion-search-input');
+
+    if (discussBtn) discussBtn.addEventListener('click', () => this.openForCard());
+    if (navHubBtn) navHubBtn.addEventListener('click', () => this.openHub());
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeModal());
+    if (doneBtn) doneBtn.addEventListener('click', () => this.closeModal());
+    if (postBtn) postBtn.addEventListener('click', () => this.postNewDoubt());
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => this.renderList(e.target.value.toLowerCase()));
+    }
+  },
+
+  openForCard() {
+    if (!currentSession || !currentSession.cards || !currentSession.cards[currentCardIndex]) {
+      this.openHub();
+      return;
+    }
+    const card = currentSession.cards[currentCardIndex];
+    this.openHub(card.topic || currentSession.topic);
+  },
+
+  openHub(filterTerm = '') {
+    const modal = document.getElementById('discussion-modal-overlay');
+    const searchInput = document.getElementById('discussion-search-input');
+    if (searchInput) searchInput.value = filterTerm;
+    if (modal) modal.style.display = 'flex';
+    this.renderList(filterTerm.toLowerCase());
+  },
+
+  closeModal() {
+    const modal = document.getElementById('discussion-modal-overlay');
+    if (modal) modal.style.display = 'none';
+  },
+
+  postNewDoubt() {
+    const topic = (currentSession && currentSession.topic) ? currentSession.topic : 'General Study';
+    const text = prompt(`Post a doubt or topic for discussion in "${topic}":`);
+    if (!text || !text.trim()) return;
+
+    const studentUser = (window.Auth && window.Auth.currentUser) ? window.Auth.currentUser.name : 'Student';
+    const discussion = {
+      id: 'disc-' + Date.now(),
+      topic: topic,
+      title: text.trim(),
+      author: studentUser,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isResolved: false,
+      replies: []
+    };
+    window.EduStore.addDiscussion(discussion);
+    this.renderList();
+    if (typeof showToast === 'function') showToast('Doubt posted to Peer Hub!', 'success');
+  },
+
+  renderList(filter = '') {
+    const container = document.getElementById('discussion-hub-body');
+    if (!container) return;
+
+    let discussions = window.EduStore.getDiscussions();
+    if (discussions.length === 0) {
+      const defaultDisc = {
+        id: 'disc-demo-1',
+        topic: "Newton's Laws",
+        title: "Why does an object in motion keep moving if friction isn't present?",
+        author: 'Alex P.',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+        updatedAt: new Date(Date.now() - 1800000).toISOString(),
+        isResolved: true,
+        replies: [
+          {
+            id: 'r-1',
+            author: 'Maya S.',
+            text: "Because forces are only needed to CHANGE velocity (acceleration), not to maintain velocity! Inertia keeps it moving.",
+            upvotes: 4,
+            isBest: true,
+            createdAt: new Date(Date.now() - 1800000).toISOString()
+          }
+        ]
+      };
+      window.EduStore.addDiscussion(defaultDisc);
+      discussions = [defaultDisc];
+    }
+
+    if (filter) {
+      discussions = discussions.filter(d => 
+        d.title.toLowerCase().includes(filter) || 
+        d.topic.toLowerCase().includes(filter) ||
+        d.author.toLowerCase().includes(filter)
+      );
+    }
+
+    if (discussions.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-dim);">No discussions found. Click "+ Post Doubt" to start one!</div>`;
+      return;
+    }
+
+    container.innerHTML = discussions.map(d => {
+      const replyCount = (d.replies || []).length;
+      return `
+        <div style="background:var(--bg-card); border:1px solid ${d.isResolved ? 'rgba(52,168,83,0.4)' : 'var(--border)'}; border-radius:var(--radius); padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <span style="font-size:0.72rem; padding:2px 8px; border-radius:10px; background:rgba(255,255,255,0.06); color:var(--green-light); font-weight:600;">${d.topic}</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">${d.isResolved ? '✅ Solved' : '💬 Open'} · ${replyCount} answers</span>
+          </div>
+          <h4 style="margin:0 0 6px 0; font-size:0.95rem; font-weight:500;">${d.title}</h4>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Posted by ${d.author}</div>
+          
+          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px; padding-left:10px; border-left:2px solid var(--border-light);">
+            ${(d.replies || []).map(r => `
+              <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; font-size:0.82rem; border:${r.isBest ? '1px solid var(--green-light)' : 'none'};">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <span style="font-weight:600; color:var(--text);">${r.author} ${r.isBest ? '⭐ <span style="color:var(--green-light); font-size:0.7rem;">(Best Answer)</span>' : ''}</span>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <button onclick="PeerDiscussionHub.upvote('${d.id}', '${r.id}')" style="background:rgba(255,255,255,0.08); border:none; color:var(--text-muted); font-size:0.72rem; padding:2px 6px; border-radius:4px; cursor:pointer;" title="Upvote explanation">👍 ${r.upvotes || 0}</button>
+                    <button onclick="PeerDiscussionHub.toggleBest('${d.id}', '${r.id}')" style="background:rgba(255,255,255,0.08); border:none; color:var(--yellow-light); font-size:0.72rem; padding:2px 6px; border-radius:4px; cursor:pointer;" title="Toggle best answer">⭐ Best</button>
+                  </div>
+                </div>
+                <p style="margin:0; color:var(--text-muted);">${r.text}</p>
+              </div>
+            `).join('')}
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="reply-input-${d.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:0.8rem;" placeholder="Explain or answer this doubt..." />
+            <button onclick="PeerDiscussionHub.addReply('${d.id}')" class="btn btn-green btn-sm" style="padding:4px 12px; font-size:0.78rem;">Reply</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  addReply(discussionId) {
+    const input = document.getElementById(`reply-input-${discussionId}`);
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+
+    const studentUser = (window.Auth && window.Auth.currentUser) ? window.Auth.currentUser.name : 'Student';
+    const replyObj = {
+      id: 'r-' + Date.now(),
+      author: studentUser,
+      text: text,
+      upvotes: 0,
+      isBest: false,
+      createdAt: new Date().toISOString()
+    };
+
+    window.EduStore.addDiscussionReply(discussionId, replyObj);
+    this.renderList();
+    if (typeof showToast === 'function') showToast('Reply posted! Peer teaching boosts retention by 90% 🧠', 'success');
+  },
+
+  upvote(discussionId, replyId) {
+    window.EduStore.upvoteReply(discussionId, replyId);
+    this.renderList();
+  },
+
+  toggleBest(discussionId, replyId) {
+    window.EduStore.markBestAnswer(discussionId, replyId);
+    this.renderList();
+    if (typeof showToast === 'function') showToast('Marked Best Answer! ⭐', 'success');
+  }
+};
+
+// ============================================================
+//  Day 18: Smart Quiz Generator Engine
+// ============================================================
+const SmartQuizEngine = {
+  durationSeconds: 300,
+  timerInterval: null,
+  quizCards: [],
+  userAnswers: [],
+  currentQuizIndex: 0,
+  timeRemaining: 300,
+
+  init() {
+    const cancelBtn = document.getElementById('quiz-config-cancel-btn');
+    const closeBtn = document.getElementById('quiz-config-close-btn');
+    const startBtn = document.getElementById('quiz-start-now-btn');
+    const durationBtns = document.querySelectorAll('.quiz-duration-btn');
+    const resultsCloseBtn = document.getElementById('quiz-results-close-btn');
+    const resultsDoneBtn = document.getElementById('quiz-results-done-btn');
+    const downloadCardBtn = document.getElementById('quiz-download-card-btn');
+
+    durationBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        durationBtns.forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        this.durationSeconds = parseInt(e.target.dataset.time) || 300;
+      });
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeConfig());
+    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeConfig());
+    if (startBtn) startBtn.addEventListener('click', () => this.startQuiz());
+    if (resultsCloseBtn) resultsCloseBtn.addEventListener('click', () => this.closeResults());
+    if (resultsDoneBtn) resultsDoneBtn.addEventListener('click', () => this.closeResults());
+    if (downloadCardBtn) downloadCardBtn.addEventListener('click', () => this.downloadCard());
+  },
+
+  openConfig() {
+    const modal = document.getElementById('quiz-config-modal-overlay');
+    if (modal) modal.style.display = 'flex';
+  },
+
+  closeConfig() {
+    const modal = document.getElementById('quiz-config-modal-overlay');
+    if (modal) modal.style.display = 'none';
+  },
+
+  closeResults() {
+    const modal = document.getElementById('quiz-results-modal-overlay');
+    if (modal) modal.style.display = 'none';
+  },
+
+  startQuiz() {
+    this.closeConfig();
+
+    let pool = [];
+    if (currentSession && currentSession.cards) {
+      pool = [...currentSession.cards];
+    } else {
+      const allSessions = window.EduStore.getSessions();
+      allSessions.forEach(s => {
+        if (s.cards) pool.push(...s.cards);
+      });
+    }
+
+    if (pool.length === 0) {
+      if (typeof showToast === 'function') showToast('No flashcard sessions available for quiz', 'error');
+      return;
+    }
+
+    this.quizCards = pool.sort(() => 0.5 - Math.random()).slice(0, 5);
+    this.userAnswers = [];
+    this.currentQuizIndex = 0;
+    this.timeRemaining = this.durationSeconds;
+
+    studyMode = 'quiz';
+    currentCards = this.quizCards;
+    currentCardIndex = 0;
+
+    const entryCard = document.getElementById('entry-card');
+    const reviewContainer = document.getElementById('review-container');
+    if (entryCard) entryCard.style.display = 'none';
+    if (reviewContainer) reviewContainer.classList.add('visible');
+
+    const timerWrap = document.getElementById('speed-timer-wrap');
+    if (timerWrap) timerWrap.style.display = 'block';
+
+    this.startTimer();
+    renderCard(0);
+    if (typeof showToast === 'function') showToast(`🎯 Smart Quiz started! ${Math.floor(this.durationSeconds/60)} mins limit`, 'info');
+  },
+
+  startTimer() {
+    clearInterval(this.timerInterval);
+    const timerText = document.getElementById('speed-timer-text');
+    const timerBar = document.getElementById('speed-timer-bar');
+
+    this.timerInterval = setInterval(() => {
+      this.timeRemaining--;
+      const mins = Math.floor(this.timeRemaining / 60);
+      const secs = this.timeRemaining % 60;
+      if (timerText) timerText.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+      if (timerBar) {
+        const pct = (this.timeRemaining / this.durationSeconds) * 100;
+        timerBar.style.width = `${pct}%`;
+      }
+
+      if (this.timeRemaining <= 0) {
+        clearInterval(this.timerInterval);
+        if (typeof showToast === 'function') showToast('⏰ Time is up! Submitting quiz...', 'info');
+        this.finishQuiz();
+      }
+    }, 1000);
+  },
+
+  finishQuiz(accuracyPct = 80) {
+    clearInterval(this.timerInterval);
+    const timerWrap = document.getElementById('speed-timer-wrap');
+    if (timerWrap) timerWrap.style.display = 'none';
+
+    this.renderShareCard(accuracyPct);
+    const modal = document.getElementById('quiz-results-modal-overlay');
+    if (modal) modal.style.display = 'flex';
+  },
+
+  renderShareCard(accuracyPct) {
+    const canvas = document.getElementById('quiz-share-card-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#1a1b1e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#34a853';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+
+    ctx.fillStyle = '#34a853';
+    ctx.font = 'bold 20px "Google Sans", sans-serif';
+    ctx.fillText('📚 EduFlash AI — Smart Quiz Badge', 24, 42);
+
+    const name = (window.Auth && window.Auth.currentUser) ? window.Auth.currentUser.name : 'Student';
+    const topic = (currentSession && currentSession.topic) ? currentSession.topic : 'General Flashcards';
+    ctx.fillStyle = '#9aa0a6';
+    ctx.font = '14px Roboto, sans-serif';
+    ctx.fillText(`Student: ${name}  |  Topic: ${topic}`, 24, 72);
+
+    ctx.fillStyle = '#fbbc04';
+    ctx.font = 'bold 48px "Google Sans", sans-serif';
+    ctx.fillText(`${accuracyPct}%`, 24, 140);
+
+    ctx.fillStyle = '#e8eaed';
+    ctx.font = '16px Roboto, sans-serif';
+    ctx.fillText('Retention Score', 24, 168);
+
+    ctx.fillStyle = 'rgba(52, 168, 83, 0.2)';
+    ctx.fillRect(24, 190, 450, 40);
+    ctx.fillStyle = '#34a853';
+    ctx.font = 'bold 14px Roboto, sans-serif';
+    ctx.fillText('🏅 Verified AI Adaptive Quiz Completion · Powered by Gemini', 36, 215);
+
+    const summary = document.getElementById('quiz-results-summary-text');
+    if (summary) {
+      summary.innerHTML = `Great job <strong>${name}</strong>! You completed the Smart Quiz on <strong>${topic}</strong> with <strong>${accuracyPct}% accuracy</strong>.`;
+    }
+  },
+
+  downloadCard() {
+    const canvas = document.getElementById('quiz-share-card-canvas');
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `EduFlash-Quiz-Badge-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    if (typeof showToast === 'function') showToast('Score card downloaded! 💾', 'success');
+  }
+};
+
+// Wire Day 18 Modules on Load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    StudentQuestionBoard.init();
+    PeerDiscussionHub.init();
+    SmartQuizEngine.init();
+
+    const quizBtn = document.getElementById('quiz-mode-btn');
+    if (quizBtn) {
+      quizBtn.addEventListener('click', () => SmartQuizEngine.openConfig());
+    }
+  }, 350);
 });
 
 

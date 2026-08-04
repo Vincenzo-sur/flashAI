@@ -208,6 +208,13 @@ function switchPanel(panelId) {
   if (panelId === 'practice-tracker') {
     if (typeof TeacherPracticeTracker !== 'undefined') TeacherPracticeTracker.renderTable();
   }
+  // Day 18: Render Questions Board and Discussions Overview
+  if (panelId === 'questions') {
+    renderQuestionBoard();
+  }
+  if (panelId === 'discussions') {
+    renderDiscussionsOverview();
+  }
 
   // Day 13: auto-scroll main content to top on every panel switch
   const mainContent = document.getElementById('main-content');
@@ -3589,3 +3596,160 @@ Keep it up — consistent spaced review is the #1 way to lock content into long-
     banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 };
+
+// ============================================================
+//  Day 18: Teacher Question Board Renderer & Handlers
+// ============================================================
+function renderQuestionBoard(filter = 'all') {
+  const container = document.getElementById('questions-list-container');
+  if (!container) return;
+
+  let questions = window.EduStore.getQuestions();
+  
+  if (questions.length === 0) {
+    const defaultQ = {
+      id: 'q-demo-1',
+      sessionId: 'session-1',
+      sessionTopic: "Newton's Laws of Motion",
+      cardId: 'card-1-2',
+      cardQuestion: "What does F = ma represent in classical mechanics?",
+      cardTopic: "Force & Acceleration",
+      studentName: "Maya S.",
+      question: "Could you explain why acceleration doubles when force is doubled, but stays same if mass is also doubled?",
+      status: "pending",
+      createdAt: new Date(Date.now() - 7200000).toISOString()
+    };
+    window.EduStore.addQuestion(defaultQ);
+    questions = [defaultQ];
+  }
+
+  const pendingCount = questions.filter(q => q.status === 'pending').length;
+  const badge = document.getElementById('questions-unread-badge');
+  if (badge) {
+    badge.textContent = pendingCount;
+    badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+  }
+
+  if (filter === 'pending') {
+    questions = questions.filter(q => q.status === 'pending');
+  }
+
+  if (questions.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-dim);">No ${filter === 'pending' ? 'pending' : ''} questions from students right now.</div>`;
+    return;
+  }
+
+  container.innerHTML = questions.map(q => {
+    const isPending = q.status === 'pending';
+    const dateStr = new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    return `
+      <div style="background:var(--bg-card); border:1px solid ${isPending ? 'var(--yellow)' : 'var(--border)'}; border-radius:var(--radius-lg); padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:600; font-size:0.95rem; color:var(--text);">${q.studentName}</span>
+            <span style="font-size:0.72rem; padding:2px 8px; border-radius:10px; background:rgba(255,255,255,0.06); color:var(--green-light);">${q.cardTopic || 'Topic'}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.75rem; color:${isPending ? 'var(--yellow)' : 'var(--green-light)'}; font-weight:600;">${isPending ? '⏳ Pending' : '✅ Answered'}</span>
+            <span style="font-size:0.72rem; color:var(--text-dim);">${dateStr}</span>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); font-size:0.82rem; color:var(--text-muted); border-left:3px solid var(--green-light);">
+          <strong>Card Question:</strong> ${q.cardQuestion}
+        </div>
+
+        <div style="font-size:0.92rem; color:var(--text); line-height:1.4;">
+          <strong>Student Doubt:</strong> "${q.question}"
+        </div>
+
+        ${q.reply ? `
+          <div style="background:rgba(52,168,83,0.08); border:1px solid rgba(52,168,83,0.3); padding:10px; border-radius:var(--radius-sm); font-size:0.85rem; color:var(--green-light);">
+            <strong>Your Reply:</strong> ${q.reply}
+          </div>
+        ` : ''}
+
+        <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+          <input type="text" id="teacher-reply-input-${q.id}" class="input-field" style="flex:1; padding:6px 12px; font-size:0.82rem;" placeholder="Type your answer to ${q.studentName}..." />
+          <button onclick="handleTeacherReply('${q.id}')" class="btn btn-green btn-sm">Send Reply</button>
+          <button onclick="handleToggleResolved('${q.id}')" class="btn btn-outline btn-sm">${q.status === 'resolved' ? 'Reopen' : 'Mark Resolved'}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const allBtn = document.getElementById('questions-filter-all');
+  const pendingBtn = document.getElementById('questions-filter-pending');
+  if (allBtn) allBtn.onclick = () => renderQuestionBoard('all');
+  if (pendingBtn) pendingBtn.onclick = () => renderQuestionBoard('pending');
+}
+
+function handleTeacherReply(questionId) {
+  const input = document.getElementById(`teacher-reply-input-${questionId}`);
+  const text = input ? input.value.trim() : '';
+  if (!text) {
+    if (typeof showToast === 'function') showToast('Please enter your reply', 'error');
+    return;
+  }
+  window.EduStore.replyToQuestion(questionId, text);
+  renderQuestionBoard();
+  if (typeof showToast === 'function') showToast('Reply sent to student!', 'success');
+}
+
+function handleToggleResolved(questionId) {
+  window.EduStore.toggleQuestionResolved(questionId);
+  renderQuestionBoard();
+}
+
+// ============================================================
+//  Day 18: Peer Discussions Overview Renderer
+// ============================================================
+function renderDiscussionsOverview() {
+  const container = document.getElementById('discussions-teacher-list');
+  if (!container) return;
+
+  const discussions = window.EduStore.getDiscussions();
+
+  const totalCountEl = document.getElementById('stat-discussions-count');
+  const resolvedCountEl = document.getElementById('stat-discussions-resolved');
+  const helpersEl = document.getElementById('stat-discussions-helpers');
+
+  const resolved = discussions.filter(d => d.isResolved).length;
+  
+  const repliers = new Set();
+  discussions.forEach(d => {
+    (d.replies || []).forEach(r => repliers.add(r.author));
+  });
+
+  if (totalCountEl) totalCountEl.textContent = discussions.length;
+  if (resolvedCountEl) resolvedCountEl.textContent = resolved;
+  if (helpersEl) helpersEl.textContent = `${repliers.size} Students`;
+
+  if (discussions.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-dim);">No active peer discussions right now.</div>`;
+    return;
+  }
+
+  container.innerHTML = discussions.map(d => {
+    const replies = d.replies || [];
+    return `
+      <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:0.75rem; color:var(--green-light); font-weight:600; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:10px;">${d.topic}</span>
+          <span style="font-size:0.75rem; color:var(--text-dim);">${d.isResolved ? '✅ Resolved' : '💬 Open'} · ${replies.length} replies</span>
+        </div>
+        <h4 style="margin:0 0 6px 0; font-weight:500; font-size:0.95rem;">${d.title}</h4>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px;">Author: ${d.author}</div>
+        
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          ${replies.map(r => `
+            <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; font-size:0.8rem; border-left:3px solid ${r.isBest ? 'var(--green-light)' : 'var(--border)'};">
+              <strong>${r.author}:</strong> ${r.text} <span style="color:var(--text-dim); font-size:0.72rem;">(👍 ${r.upvotes || 0})</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}

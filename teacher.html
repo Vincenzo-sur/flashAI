@@ -122,6 +122,17 @@
                   <span class="nav-sub-dot"></span>
                   Session Results
                 </div>
+                <!-- Day 18: Student Questions -->
+                <div class="nav-sub-item" data-panel="questions" id="sub-questions">
+                  <span class="nav-sub-dot"></span>
+                  ❓ Student Questions
+                  <span class="nav-sub-badge" id="questions-unread-badge" style="display:none; background:var(--yellow); color:#000;">0</span>
+                </div>
+                <!-- Day 18: Peer Discussions -->
+                <div class="nav-sub-item" data-panel="discussions" id="sub-discussions">
+                  <span class="nav-sub-dot"></span>
+                  🤝 Peer Discussions
+                </div>
               </div>
             </div>
           </div>
@@ -698,6 +709,50 @@
           <!-- Day 13: Card Difficulty Heat-Map (injected by JS after results-active populates) -->
           <div id="heatmap-container" style="display:none;">
             <!-- Populated by renderCardDifficultyHeatMap() -->
+          </div>
+        </div>
+
+        <!-- Day 18 Panel: Student Questions -->
+        <div class="panel-content" id="panel-questions" role="tabpanel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">❓ Student Questions & Doubts</h2>
+              <p class="panel-sub">Review and reply to doubts submitted by students on specific flashcards.</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-outline btn-sm" id="questions-filter-all">All</button>
+              <button class="btn btn-yellow btn-sm" id="questions-filter-pending">Pending Reply</button>
+            </div>
+          </div>
+          <div id="questions-list-container" style="display:flex; flex-direction:column; gap:16px;">
+            <!-- Populated by renderQuestionBoard() -->
+          </div>
+        </div>
+
+        <!-- Day 18 Panel: Peer Discussions Overview -->
+        <div class="panel-content" id="panel-discussions" role="tabpanel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">🤝 Peer Discussion Overview</h2>
+              <p class="panel-sub">Monitor student-to-student peer teaching and doubt solving across all topics.</p>
+            </div>
+          </div>
+          <div class="analytics-grid" style="margin-bottom:20px;">
+            <div class="analytics-stat-card">
+              <span class="stat-card-title">Total Active Threads</span>
+              <span class="stat-card-val" id="stat-discussions-count">0</span>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="stat-card-title">Resolved Doubts</span>
+              <span class="stat-card-val" id="stat-discussions-resolved">0</span>
+            </div>
+            <div class="analytics-stat-card">
+              <span class="stat-card-title">Top Peer Helpers</span>
+              <span class="stat-card-val" id="stat-discussions-helpers" style="font-size:1.2rem; margin-top:4px;">0 Students</span>
+            </div>
+          </div>
+          <div id="discussions-teacher-list" style="display:flex; flex-direction:column; gap:14px;">
+            <!-- Populated by renderDiscussionsOverview() -->
           </div>
         </div>
 
