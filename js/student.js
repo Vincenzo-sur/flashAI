@@ -1002,6 +1002,10 @@ function startReview(session, resuming = false) {
   const fab = document.getElementById('edubot-fab');
   if (fab) fab.style.display = 'flex';
 
+  // Day 19: Show Collaborative Notes FAB
+  const collabFab = document.getElementById('collab-notes-fab');
+  if (collabFab) collabFab.style.display = 'flex';
+
   renderCard();
 }
 
@@ -1092,6 +1096,12 @@ function renderCard() {
   // Fill MCQ Options
   const optionsContainer = document.getElementById('review-options');
   optionsContainer.innerHTML = '';
+
+  // Day 19: Check for micro-lesson (if student previously got this card wrong)
+  checkAndShowMicroLesson(currentSession.id, card.id);
+
+  // Day 19: Check for active live poll from teacher
+  if (typeof StudentLivePoll !== 'undefined') StudentLivePoll.checkForPoll();
 
   const savedAnswer = sessionAnswers[currentCardIndex];
 
@@ -1212,6 +1222,9 @@ function handleOptionSelection(optIndex, correctIndex) {
 
   // Day 14: Award XP for correct answer
   if (isCorrect) XPEngine.awardXP(10, 'Correct answer');
+
+  // Day 19: Record wrong cards so micro-lessons can be shown on re-review
+  if (!isCorrect) recordWrongCard(currentSession.id, card.id);
 
   // Render correct/wrong colors
   const optionElements = document.querySelectorAll('#review-options .mcq-option');
@@ -3729,8 +3742,221 @@ document.addEventListener('DOMContentLoaded', () => {
     if (quizBtn) {
       quizBtn.addEventListener('click', () => SmartQuizEngine.openConfig());
     }
+
+    // Day 19: Init new modules
+    CollaborativeNotes.init();
+    StudentLivePoll.init();
+    StudentMarketplace.init();
+
+    // Day 19: Marketplace mode button opens the modal
+    document.getElementById('marketplace-mode-btn')?.addEventListener('click', () => {
+      StudentMarketplace.open();
+    });
   }, 350);
 });
+
+// ============================================================
+//  Day 19: Collaborative Class Notes (Student Side)
+// ============================================================
+const CollaborativeNotes = {
+  currentSessionId: null,
+
+  init() {
+    const fab       = document.getElementById('collab-notes-fab');
+    const modal     = document.getElementById('collab-notes-modal-overlay');
+    const closeBtn  = document.getElementById('collab-notes-close-btn');
+    const submitBtn = document.getElementById('collab-note-submit-btn');
+    const input     = document.getElementById('collab-note-input');
+
+    if (fab) fab.addEventListener('click', () => this.open());
+    if (closeBtn) closeBtn.addEventListener('click', () => { if (modal) modal.style.display = 'none'; });
+    if (modal) modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    if (submitBtn) submitBtn.addEventListener('click', () => this.postNote());
+    if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') this.postNote(); });
+  },
+
+  open() {
+    // Get current session id from global state
+    this.currentSessionId = (currentSession && currentSession.id) ? currentSession.id : 'global';
+    const label = document.getElementById('collab-notes-session-label');
+    if (label && currentSession) label.textContent = `Shared notes — ${currentSession.topic || 'this session'}`;
+    const modal = document.getElementById('collab-notes-modal-overlay');
+    if (modal) modal.style.display = 'flex';
+    this.renderNotes();
+  },
+
+  postNote() {
+    const input = document.getElementById('collab-note-input');
+    const text = input?.value.trim();
+    if (!text) return;
+    const author = (window.Auth?.currentUser?.name) || 'Student';
+    window.EduStore.addCollabNote(this.currentSessionId, text, author);
+    input.value = '';
+    this.renderNotes();
+    if (typeof showToast === 'function') showToast('Note posted to class! 📝', 'success');
+  },
+
+  renderNotes() {
+    const feed = document.getElementById('collab-notes-feed');
+    if (!feed) return;
+    const notes = window.EduStore.getCollabNotes(this.currentSessionId);
+    if (!notes.length) {
+      feed.innerHTML = `<div style="text-align:center; color:var(--text-dim); padding:30px; font-size:0.85rem;">No notes yet. Be the first to share a key insight! ✨</div>`;
+      return;
+    }
+    // Sort pinned first
+    const sorted = [...notes].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+    feed.innerHTML = sorted.map(note => `
+      <div style="background:${note.isPinned ? 'rgba(52,168,83,0.08)' : 'var(--bg-card)'}; border:1px solid ${note.isPinned ? 'rgba(52,168,83,0.3)' : 'var(--border)'}; border-radius:var(--radius-sm); padding:12px 14px; position:relative;">
+        ${note.isPinned ? '<span style="position:absolute; top:6px; right:8px; font-size:0.7rem; color:var(--green-light); font-weight:700;">📌 PINNED</span>' : ''}
+        <div style="font-size:0.85rem; color:var(--text); margin-bottom:6px; padding-right:${note.isPinned ? '60px' : '0'};">${note.text}</div>
+        <div style="font-size:0.72rem; color:var(--text-dim);">— ${note.author} · ${new Date(note.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    `).join('');
+  }
+};
+
+// ============================================================
+//  Day 19: Live Poll (Student Side)
+// ============================================================
+const StudentLivePoll = {
+  hasVoted: false,
+
+  init() {
+    // Poll banner is checked when a card loads
+  },
+
+  checkForPoll() {
+    const poll = window.EduStore.getActivePoll();
+    const banner = document.getElementById('student-poll-banner');
+    if (!banner) return;
+
+    if (!poll || !poll.isActive) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    // Show poll banner
+    banner.style.display = 'block';
+    this.hasVoted = false;
+    const questionEl = document.getElementById('student-poll-question-text');
+    if (questionEl) questionEl.textContent = poll.question;
+
+    const thankyou = document.getElementById('student-poll-thankyou');
+    if (thankyou) thankyou.style.display = 'none';
+
+    const optionsEl = document.getElementById('student-poll-options');
+    if (!optionsEl) return;
+    const labels = ['A','B','C','D'];
+    optionsEl.innerHTML = poll.options.map((opt, i) => `
+      <button class="poll-vote-btn" onclick="StudentLivePoll.vote(${i})"
+        style="background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; font-size:0.82rem; color:var(--text); cursor:pointer; text-align:left; transition:background 0.2s, border-color 0.2s;"
+        onmouseover="this.style.borderColor='var(--green-light)'; this.style.background='rgba(52,168,83,0.08)'"
+        onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--bg-surface)'"
+      >${labels[i]}. ${opt}</button>
+    `).join('');
+  },
+
+  vote(optionIndex) {
+    if (this.hasVoted) return;
+    const voterName = (window.Auth?.currentUser?.name) || `Student-${Math.floor(Math.random()*100)}`;
+    window.EduStore.submitPollAnswer(optionIndex, voterName);
+    this.hasVoted = true;
+    const optionsEl = document.getElementById('student-poll-options');
+    if (optionsEl) optionsEl.innerHTML = '';
+    const thankyou = document.getElementById('student-poll-thankyou');
+    if (thankyou) thankyou.style.display = 'block';
+  }
+};
+
+// ============================================================
+//  Day 19: Flashcard Marketplace (Student Side)
+// ============================================================
+const StudentMarketplace = {
+  init() {
+    const closeBtn = document.getElementById('marketplace-modal-close-btn');
+    const modal    = document.getElementById('marketplace-modal-overlay');
+    if (closeBtn) closeBtn.addEventListener('click', () => { if (modal) modal.style.display = 'none'; });
+    if (modal) modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+  },
+
+  open() {
+    const modal = document.getElementById('marketplace-modal-overlay');
+    if (modal) modal.style.display = 'flex';
+    this.renderGrid();
+  },
+
+  renderGrid() {
+    const grid = document.getElementById('student-marketplace-grid');
+    if (!grid) return;
+    const decks = window.EduStore.getMarketplaceDecks();
+    if (!decks.length) {
+      grid.innerHTML = `<div style="text-align:center; color:var(--text-dim); padding:40px; grid-column:1/-1; font-size:0.85rem;">🏪 No decks in the marketplace yet. Ask your teacher to publish a deck!</div>`;
+      return;
+    }
+    grid.innerHTML = decks.map(d => `
+      <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; display:flex; flex-direction:column; gap:10px; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--green-light)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-weight:600; font-size:0.92rem;">${d.title}</div>
+        <div style="font-size:0.75rem; color:var(--text-dim);">📚 ${d.cards.length} cards · 👤 ${d.publisher} · ⬇️ ${d.imports} imports</div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          ${[1,2,3,4,5].map(s => `<span style="color:${s <= Math.round(d.rating) ? 'var(--yellow)' : 'var(--border)'};">★</span>`).join('')}
+          <span style="font-size:0.72rem; color:var(--text-dim); margin-left:4px;">${d.ratingCount > 0 ? d.rating.toFixed(1) : 'No ratings'}</span>
+        </div>
+        <button class="btn btn-green btn-sm" style="margin-top:auto;" onclick="StudentMarketplace.importDeck('${d.id}')">⬇️ Import Deck</button>
+      </div>
+    `).join('');
+  },
+
+  importDeck(deckId) {
+    const newSession = window.EduStore.importMarketplaceDeck(deckId);
+    if (newSession) {
+      const modal = document.getElementById('marketplace-modal-overlay');
+      if (modal) modal.style.display = 'none';
+      if (typeof showToast === 'function') showToast(`Deck imported! Find it in your session list as "${newSession.topic}" ✅`, 'success');
+    }
+  }
+};
+
+// ============================================================
+//  Day 19: Micro-Lesson Injection (Student Side)
+// ============================================================
+function checkAndShowMicroLesson(sessionId, cardId) {
+  const box      = document.getElementById('micro-lesson-box');
+  const textEl   = document.getElementById('micro-lesson-text');
+  const dismissBtn = document.getElementById('micro-lesson-dismiss');
+  if (!box || !textEl) return;
+
+  box.style.display = 'none';
+
+  // Wire dismiss button once
+  if (dismissBtn && !dismissBtn._wired) {
+    dismissBtn.addEventListener('click', () => { box.style.display = 'none'; });
+    dismissBtn._wired = true;
+  }
+
+  if (!sessionId || !cardId) return;
+
+  try {
+    const lessons = JSON.parse(localStorage.getItem(`ef_micro_lessons_${sessionId}`) || '{}');
+    const lesson = lessons[cardId];
+    if (!lesson) return;
+
+    // Only show if student previously got this card wrong
+    const wrongCards = JSON.parse(localStorage.getItem(`ef_wrong_cards_${sessionId}`) || '[]');
+    if (!wrongCards.includes(cardId)) return;
+
+    textEl.textContent = lesson;
+    box.style.display = 'block';
+  } catch(e) { /* silently fail */ }
+}
+
+function recordWrongCard(sessionId, cardId) {
+  try {
+    const key = `ef_wrong_cards_${sessionId}`;
+    const arr = JSON.parse(localStorage.getItem(key) || '[]');
+    if (!arr.includes(cardId)) { arr.push(cardId); localStorage.setItem(key, JSON.stringify(arr)); }
+  } catch(e) {}
+}
 
 
 

@@ -12,7 +12,12 @@ const STORE_KEYS = {
   API_KEY: 'ef_gemini_api_key',
   PLANNER: 'ef_student_planner',
   QUESTIONS: 'ef_student_questions',
-  DISCUSSIONS: 'ef_peer_discussions'
+  DISCUSSIONS: 'ef_peer_discussions',
+  // Day 19
+  LIVE_POLL: 'ef_live_poll',
+  COLLAB_NOTES: 'ef_collab_notes',
+  MARKETPLACE: 'ef_marketplace',
+  MISCONCEPTIONS: 'ef_misconceptions'
 };
 
 // Initial mock sessions to populate if the store is empty
@@ -452,6 +457,162 @@ const EduStore = {
       this.saveDiscussions(discussions);
     }
     return d;
+  },
+
+  // ── Day 19: Live Poll Engine ─────────────────────────────────
+  getActivePoll() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEYS.LIVE_POLL)) || null; } catch { return null; }
+  },
+  createPoll(question, options) {
+    const poll = {
+      id: 'poll-' + Date.now(),
+      question,
+      options,
+      votes: options.map(() => []),  // array of voter name arrays per option
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem(STORE_KEYS.LIVE_POLL, JSON.stringify(poll));
+    return poll;
+  },
+  submitPollAnswer(optionIndex, voterName) {
+    const poll = this.getActivePoll();
+    if (!poll || !poll.isActive) return null;
+    // Remove previous vote by this voter
+    poll.votes = poll.votes.map(voters => voters.filter(v => v !== voterName));
+    poll.votes[optionIndex].push(voterName);
+    localStorage.setItem(STORE_KEYS.LIVE_POLL, JSON.stringify(poll));
+    return poll;
+  },
+  endPoll() {
+    const poll = this.getActivePoll();
+    if (poll) { poll.isActive = false; localStorage.setItem(STORE_KEYS.LIVE_POLL, JSON.stringify(poll)); }
+    return poll;
+  },
+  clearPoll() {
+    localStorage.removeItem(STORE_KEYS.LIVE_POLL);
+  },
+
+  // ── Day 19: Collaborative Class Notes ───────────────────────
+  getCollabNotes(sessionId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORE_KEYS.COLLAB_NOTES)) || {};
+      return all[sessionId] || [];
+    } catch { return []; }
+  },
+  addCollabNote(sessionId, text, author) {
+    const all = (() => { try { return JSON.parse(localStorage.getItem(STORE_KEYS.COLLAB_NOTES)) || {}; } catch { return {}; } })();
+    if (!all[sessionId]) all[sessionId] = [];
+    const note = { id: 'note-' + Date.now(), text, author, isPinned: false, createdAt: new Date().toISOString() };
+    all[sessionId].unshift(note);
+    localStorage.setItem(STORE_KEYS.COLLAB_NOTES, JSON.stringify(all));
+    return note;
+  },
+  togglePinNote(sessionId, noteId) {
+    const all = (() => { try { return JSON.parse(localStorage.getItem(STORE_KEYS.COLLAB_NOTES)) || {}; } catch { return {}; } })();
+    if (!all[sessionId]) return;
+    const note = all[sessionId].find(n => n.id === noteId);
+    if (note) { note.isPinned = !note.isPinned; localStorage.setItem(STORE_KEYS.COLLAB_NOTES, JSON.stringify(all)); }
+  },
+
+  // ── Day 19: Flashcard Marketplace ───────────────────────────
+  getMarketplaceDecks() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEYS.MARKETPLACE)) || []; } catch { return []; }
+  },
+  publishDeckToMarketplace(session, publisherName) {
+    const decks = this.getMarketplaceDecks();
+    const existing = decks.findIndex(d => d.sourceSessionId === session.id);
+    if (existing !== -1) { if (typeof showToast === 'function') showToast('Deck already published!', 'info'); return decks[existing]; }
+    const deck = {
+      id: 'mkt-' + Date.now(),
+      sourceSessionId: session.id,
+      title: `${session.topic}`,
+      subject: session.subject || 'General',
+      topic: session.topic,
+      cards: session.cards || [],
+      publisher: publisherName || 'Teacher',
+      rating: 0,
+      ratingCount: 0,
+      imports: 0,
+      tags: [session.subject || 'General', session.topic],
+      publishedAt: new Date().toISOString()
+    };
+    decks.unshift(deck);
+    localStorage.setItem(STORE_KEYS.MARKETPLACE, JSON.stringify(decks));
+    return deck;
+  },
+  rateDeck(deckId, stars) {
+    const decks = this.getMarketplaceDecks();
+    const deck = decks.find(d => d.id === deckId);
+    if (deck) {
+      const total = deck.rating * deck.ratingCount + stars;
+      deck.ratingCount++;
+      deck.rating = total / deck.ratingCount;
+      localStorage.setItem(STORE_KEYS.MARKETPLACE, JSON.stringify(decks));
+    }
+  },
+  importMarketplaceDeck(deckId) {
+    const decks = this.getMarketplaceDecks();
+    const deck = decks.find(d => d.id === deckId);
+    if (!deck) return null;
+    deck.imports = (deck.imports || 0) + 1;
+    localStorage.setItem(STORE_KEYS.MARKETPLACE, JSON.stringify(decks));
+    // Create a new draft session from the deck
+    const newSession = {
+      id: 'session-imported-' + Date.now(),
+      subject: deck.subject,
+      topic: `[Imported] ${deck.topic}`,
+      date: new Date().toISOString().split('T')[0],
+      status: 'draft',
+      cards: deck.cards.map(c => ({ ...c, id: 'card-imp-' + Math.random().toString(36).substr(2, 8) })),
+      responses: []
+    };
+    this.addSession(newSession);
+    return newSession;
+  },
+
+  // ── Day 19: Misconception Detector ──────────────────────────
+  getMisconceptionData(sessionId) {
+    const session = this.getSessionById(sessionId);
+    if (!session || !session.responses || !session.cards) return null;
+    // Per card: count how many students chose each wrong option
+    return session.cards.map(card => {
+      const wrongOptionCounts = card.options.map((_, i) => 0);
+      let totalWrong = 0;
+      session.responses.forEach(r => {
+        const cr = (r.cardResponses || []).find(x => x.cardId === card.id);
+        if (cr && !cr.isCorrect && typeof cr.selectedIndex === 'number') {
+          wrongOptionCounts[cr.selectedIndex]++;
+          totalWrong++;
+        }
+      });
+      // Most chosen wrong option
+      let maxWrong = 0; let dominantWrongIdx = -1;
+      wrongOptionCounts.forEach((c, i) => { if (i !== card.correctIndex && c > maxWrong) { maxWrong = c; dominantWrongIdx = i; } });
+      return {
+        cardId: card.id,
+        question: card.question,
+        options: card.options,
+        correctIndex: card.correctIndex,
+        wrongOptionCounts,
+        dominantWrongIdx,
+        dominantWrongText: dominantWrongIdx >= 0 ? card.options[dominantWrongIdx] : null,
+        dominantWrongCount: maxWrong,
+        totalWrong,
+        totalResponses: session.responses.length
+      };
+    }).filter(d => d.totalWrong > 0);
+  },
+  saveMisconceptionReport(sessionId, report) {
+    const all = (() => { try { return JSON.parse(localStorage.getItem(STORE_KEYS.MISCONCEPTIONS)) || {}; } catch { return {}; } })();
+    all[sessionId] = { report, generatedAt: new Date().toISOString() };
+    localStorage.setItem(STORE_KEYS.MISCONCEPTIONS, JSON.stringify(all));
+  },
+  getMisconceptionReport(sessionId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORE_KEYS.MISCONCEPTIONS)) || {};
+      return all[sessionId] || null;
+    } catch { return null; }
   }
 };
 

@@ -78,6 +78,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Day 17: init Practice Tracker
   if (typeof TeacherPracticeTracker !== 'undefined') TeacherPracticeTracker.init();
+
+  // Day 19: Init Live Poll, Marketplace, Misconception Detector
+  TeacherLivePoll.init();
+  TeacherMarketplace.init();
+  MisconceptionDetector.init();
 });
 
 
@@ -214,6 +219,12 @@ function switchPanel(panelId) {
   }
   if (panelId === 'discussions') {
     renderDiscussionsOverview();
+  }
+
+  // Day 19: dispatch event so marketplace/misconception modules can re-render
+  document.dispatchEvent(new CustomEvent('panel-switched', { detail: panelId }));
+  if (panelId === 'misconceptions' && typeof MisconceptionDetector !== 'undefined') {
+    MisconceptionDetector.populateSessionSelect();
   }
 
   // Day 13: auto-scroll main content to top on every panel switch
@@ -890,6 +901,13 @@ window.viewSessionResults = function(id) {
   renderResultsPanel(id);
   renderCardDifficultyHeatMap(id);  // Day 13
   switchPanel('results');
+
+  // Day 19: notify Misconception Detector bar
+  const session = window.EduStore.getSessionById(id);
+  const responseCount = session?.responses?.length || 0;
+  document.dispatchEvent(new CustomEvent('results-panel-loaded', { detail: { sessionId: id, responseCount } }));
+  // Also update misconception session select
+  if (typeof MisconceptionDetector !== 'undefined') MisconceptionDetector.populateSessionSelect();
 };
 
 // ── Teacher Analytics Calculations ─────────────────────────
@@ -3716,11 +3734,8 @@ function renderDiscussionsOverview() {
   const helpersEl = document.getElementById('stat-discussions-helpers');
 
   const resolved = discussions.filter(d => d.isResolved).length;
-  
   const repliers = new Set();
-  discussions.forEach(d => {
-    (d.replies || []).forEach(r => repliers.add(r.author));
-  });
+  discussions.forEach(d => { (d.replies || []).forEach(r => repliers.add(r.author)); });
 
   if (totalCountEl) totalCountEl.textContent = discussions.length;
   if (resolvedCountEl) resolvedCountEl.textContent = resolved;
@@ -3741,7 +3756,6 @@ function renderDiscussionsOverview() {
         </div>
         <h4 style="margin:0 0 6px 0; font-weight:500; font-size:0.95rem;">${d.title}</h4>
         <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px;">Author: ${d.author}</div>
-        
         <div style="display:flex; flex-direction:column; gap:6px;">
           ${replies.map(r => `
             <div style="background:var(--bg-surface); padding:8px 10px; border-radius:6px; font-size:0.8rem; border-left:3px solid ${r.isBest ? 'var(--green-light)' : 'var(--border)'};">
@@ -3753,3 +3767,340 @@ function renderDiscussionsOverview() {
     `;
   }).join('');
 }
+
+// ============================================================
+//  Day 19: Live Poll Engine (Teacher Side)
+// ============================================================
+const TeacherLivePoll = {
+  pollRefreshInterval: null,
+
+  init() {
+    const launchBtn = document.getElementById('btn-launch-poll');
+    const endBtn    = document.getElementById('btn-end-poll');
+    if (launchBtn) launchBtn.addEventListener('click', () => this.launchPoll());
+    if (endBtn)    endBtn.addEventListener('click', () => this.endPoll());
+
+    // Restore any active poll on page load
+    const poll = window.EduStore.getActivePoll();
+    if (poll && poll.isActive) this.renderLiveResults(poll);
+  },
+
+  launchPoll() {
+    const q = document.getElementById('poll-question-input')?.value.trim();
+    if (!q) { if (typeof showToast === 'function') showToast('Please enter a poll question', 'error'); return; }
+    const optionInputs = [...document.querySelectorAll('.poll-option-input')];
+    const options = optionInputs.map(i => i.value.trim()).filter(Boolean);
+    if (options.length < 2) { if (typeof showToast === 'function') showToast('Please enter at least 2 options', 'error'); return; }
+
+    const poll = window.EduStore.createPoll(q, options);
+    this.renderLiveResults(poll);
+    document.getElementById('btn-launch-poll').style.display = 'none';
+    document.getElementById('btn-end-poll').style.display = '';
+
+    // Auto-refresh every 3s to simulate real-time updates
+    this.pollRefreshInterval = setInterval(() => {
+      const current = window.EduStore.getActivePoll();
+      if (current) this.renderLiveResults(current);
+    }, 3000);
+
+    if (typeof showToast === 'function') showToast('Poll launched! Students can now vote.', 'success');
+  },
+
+  endPoll() {
+    clearInterval(this.pollRefreshInterval);
+    window.EduStore.endPoll();
+    document.getElementById('btn-launch-poll').style.display = '';
+    document.getElementById('btn-end-poll').style.display = 'none';
+    const badge = document.getElementById('poll-live-status-badge');
+    if (badge) { badge.textContent = '⚫ Ended'; badge.style.background = 'rgba(255,255,255,0.06)'; badge.style.color = 'var(--text-dim)'; }
+    if (typeof showToast === 'function') showToast('Poll ended.', 'info');
+  },
+
+  renderLiveResults(poll) {
+    const container = document.getElementById('poll-live-results');
+    const barsEl    = document.getElementById('poll-bars-container');
+    const titleEl   = document.getElementById('poll-live-question-title');
+    const totalEl   = document.getElementById('poll-total-voters');
+    if (!container || !barsEl) return;
+
+    container.style.display = '';
+    if (titleEl) titleEl.textContent = poll.question;
+
+    const totalVotes = poll.votes.reduce((s, arr) => s + arr.length, 0);
+    if (totalEl) totalEl.textContent = `${totalVotes} response${totalVotes !== 1 ? 's' : ''}`;
+
+    const colors = ['var(--green-light)', 'var(--yellow)', '#8ab4f8', '#f28b82'];
+    barsEl.innerHTML = poll.options.map((opt, i) => {
+      const count = (poll.votes[i] || []).length;
+      const pct   = totalVotes ? Math.round((count / totalVotes) * 100) : 0;
+      return `
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px;">
+            <span style="font-weight:500;">${String.fromCharCode(65+i)}. ${opt}</span>
+            <span style="color:var(--text-muted);">${count} (${pct}%)</span>
+          </div>
+          <div style="height:10px; background:var(--bg-surface); border-radius:5px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:${colors[i % colors.length]}; border-radius:5px; transition:width 0.6s ease;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+};
+
+// ============================================================
+//  Day 19: Flashcard Marketplace (Teacher Side)
+// ============================================================
+const TeacherMarketplace = {
+  init() {
+    this.populatePublishSelect();
+    this.renderMarketplaceGrid();
+
+    document.getElementById('btn-publish-marketplace')?.addEventListener('click', () => {
+      const sel = document.getElementById('marketplace-publish-select');
+      const sessionId = sel?.value;
+      if (!sessionId) { if (typeof showToast === 'function') showToast('Select a session to publish', 'error'); return; }
+      const session = window.EduStore.getSessionById(sessionId);
+      if (!session || !session.cards?.length) { if (typeof showToast === 'function') showToast('Session has no cards', 'error'); return; }
+      const publisher = (window.Auth?.currentUser?.name) || 'Teacher';
+      window.EduStore.publishDeckToMarketplace(session, publisher);
+      this.renderMarketplaceGrid();
+      if (typeof showToast === 'function') showToast('Deck published to Marketplace! 🏪', 'success');
+    });
+
+    // Re-render when panel becomes visible
+    document.addEventListener('panel-switched', (e) => {
+      if (e.detail === 'marketplace') { this.populatePublishSelect(); this.renderMarketplaceGrid(); }
+    });
+  },
+
+  populatePublishSelect() {
+    const sel = document.getElementById('marketplace-publish-select');
+    if (!sel) return;
+    const sessions = window.EduStore.getSessions().filter(s => s.cards?.length > 0);
+    sel.innerHTML = '<option value="">— Select a session/draft to publish —</option>' +
+      sessions.map(s => `<option value="${s.id}">${s.topic || s.subject} (${s.cards.length} cards)</option>`).join('');
+  },
+
+  renderMarketplaceGrid() {
+    const grid = document.getElementById('marketplace-decks-grid');
+    if (!grid) return;
+    const decks = window.EduStore.getMarketplaceDecks();
+    if (!decks.length) {
+      grid.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-dim); grid-column:1/-1;"><div style="font-size:2.5rem; margin-bottom:10px;">🏪</div><div style="font-size:0.9rem;">No decks published yet. Be the first to share a deck with your class!</div></div>`;
+      return;
+    }
+    grid.innerHTML = decks.map(d => `
+      <div class="mkt-deck-card" style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px; display:flex; flex-direction:column; gap:10px; transition:border-color 0.2s, box-shadow 0.2s;" onmouseover="this.style.borderColor='var(--green-light)'; this.style.boxShadow='0 4px 20px rgba(52,168,83,0.15)'" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="font-weight:600; font-size:0.95rem; line-height:1.3;">${d.title}</div>
+          <span style="font-size:0.72rem; padding:2px 8px; border-radius:10px; background:rgba(52,168,83,0.12); color:var(--green-light); font-weight:600; white-space:nowrap; margin-left:8px;">${d.subject}</span>
+        </div>
+        <div style="font-size:0.78rem; color:var(--text-dim);">📚 ${d.cards.length} cards · 👤 ${d.publisher} · ⬇️ ${d.imports} imports</div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          ${[1,2,3,4,5].map(s => `<span style="font-size:1rem; cursor:pointer; color:${s <= Math.round(d.rating) ? 'var(--yellow)' : 'var(--border)'};" onclick="window.EduStore.rateDeck('${d.id}', ${s}); TeacherMarketplace.renderMarketplaceGrid();">★</span>`).join('')}
+          <span style="font-size:0.72rem; color:var(--text-dim);">${d.ratingCount > 0 ? d.rating.toFixed(1) : 'No ratings'}</span>
+        </div>
+        <div style="margin-top:auto; display:flex; gap:8px;">
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="TeacherMarketplace.importDeck('${d.id}')">⬇️ Import</button>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  importDeck(deckId) {
+    const newSession = window.EduStore.importMarketplaceDeck(deckId);
+    if (newSession) {
+      renderAllSessions();
+      if (typeof showToast === 'function') showToast('Deck imported as a new draft! ✅', 'success');
+    }
+  }
+};
+
+// ============================================================
+//  Day 19: AI Misconception Detector (Teacher Side)
+// ============================================================
+const MisconceptionDetector = {
+  currentSessionId: null,
+
+  init() {
+    this.populateSessionSelect();
+
+    document.getElementById('btn-run-misconception-analysis')?.addEventListener('click', () => {
+      const sid = document.getElementById('misconception-session-select')?.value;
+      if (!sid) { if (typeof showToast === 'function') showToast('Select a session first', 'error'); return; }
+      this.currentSessionId = sid;
+      this.analyze(sid);
+    });
+
+    // "Analyze Misconceptions" button on Session Results panel
+    document.getElementById('btn-analyze-misconceptions')?.addEventListener('click', () => {
+      if (selectedResultsSessionId) {
+        switchPanel('misconceptions');
+        const sel = document.getElementById('misconception-session-select');
+        if (sel) sel.value = selectedResultsSessionId;
+        this.currentSessionId = selectedResultsSessionId;
+        this.analyze(selectedResultsSessionId);
+      }
+    });
+
+    // Show bar when results are loaded
+    document.addEventListener('results-panel-loaded', (e) => {
+      const bar = document.getElementById('misconception-analyze-bar');
+      if (bar) bar.style.display = e.detail?.responseCount >= 2 ? 'block' : 'none';
+    });
+  },
+
+  populateSessionSelect() {
+    const sel = document.getElementById('misconception-session-select');
+    if (!sel) return;
+    const sessions = window.EduStore.getSessions().filter(s => s.responses?.length >= 2);
+    sel.innerHTML = '<option value="">— Select a session to analyze —</option>' +
+      sessions.map(s => `<option value="${s.id}">${s.topic || s.subject} (${s.responses.length} responses)</option>`).join('');
+  },
+
+  async analyze(sessionId) {
+    const data = window.EduStore.getMisconceptionData(sessionId);
+    if (!data || data.length === 0) {
+      if (typeof showToast === 'function') showToast('No wrong answers to analyze for this session', 'info');
+      return;
+    }
+
+    // Check for cached report
+    const cached = window.EduStore.getMisconceptionReport(sessionId);
+    if (cached) { this.render(cached.report, sessionId); return; }
+
+    const loadingEl = document.getElementById('misconception-loading');
+    if (loadingEl) loadingEl.style.display = 'flex';
+
+    const apiKey = window.EduStore.getApiKey();
+    if (!apiKey) {
+      // Mock fallback
+      const mockReport = data.map(d => ({
+        cardId: d.cardId,
+        question: d.question,
+        dominantWrongOption: d.dominantWrongText || 'N/A',
+        dominantWrongCount: d.dominantWrongCount,
+        totalWrong: d.totalWrong,
+        misconceptionLabel: `Confusion between correct concept and "${d.dominantWrongText}"`,
+        microLesson: `Students may be confusing this with "${d.dominantWrongText}". The key distinction is that the correct answer describes a specific property or law, while the distractor relates to a different concept. Review the precise definition and try applying it to a new example.`
+      }));
+      window.EduStore.saveMisconceptionReport(sessionId, mockReport);
+      if (loadingEl) loadingEl.style.display = 'none';
+      this.render(mockReport, sessionId);
+      return;
+    }
+
+    // Build Gemini prompt
+    const cardDescriptions = data.map((d, i) => {
+      const wrongDist = d.wrongOptionCounts.map((c, idx) => idx !== d.correctIndex ? `"${d.options[idx]}" (${c} students)` : null).filter(Boolean).join(', ');
+      return `Card ${i+1}: "${d.question}"\nCorrect: "${d.options[d.correctIndex]}"\nWrong answers chosen: ${wrongDist}\nMost common wrong: "${d.dominantWrongText}" (${d.dominantWrongCount}/${d.totalWrong} wrong students)`;
+    }).join('\n\n');
+
+    const prompt = `You are an expert educational analyst. Below are flashcard MCQ wrong-answer patterns from a class session. For each card, analyze the specific conceptual confusion causing the most-chosen wrong answer, and write a targeted 2-sentence micro-lesson to correct it.
+
+${cardDescriptions}
+
+Respond with a JSON array. Each object must have:
+- "cardId": the card ID (copy from input)
+- "misconceptionLabel": short label for the misconception (max 10 words)
+- "microLesson": 2-sentence correction micro-lesson targeted at students who chose the wrong option
+
+Return ONLY valid JSON array, no markdown.`;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const result = await response.json();
+      let text = result.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+      text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const geminiItems = JSON.parse(text);
+
+      // Merge Gemini output with raw data
+      const report = data.map(d => {
+        const g = geminiItems.find(gi => gi.cardId === d.cardId) || {};
+        return {
+          cardId: d.cardId,
+          question: d.question,
+          dominantWrongOption: d.dominantWrongText,
+          dominantWrongCount: d.dominantWrongCount,
+          totalWrong: d.totalWrong,
+          totalResponses: d.totalResponses,
+          misconceptionLabel: g.misconceptionLabel || `Confusion with "${d.dominantWrongText}"`,
+          microLesson: g.microLesson || `Review the concept carefully. Students who chose "${d.dominantWrongText}" may be confusing it with the correct answer.`
+        };
+      });
+      window.EduStore.saveMisconceptionReport(sessionId, report);
+      if (loadingEl) loadingEl.style.display = 'none';
+      this.render(report, sessionId);
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (typeof showToast === 'function') showToast('Gemini analysis failed — using heuristic fallback', 'error');
+      const fallbackReport = data.map(d => ({
+        cardId: d.cardId, question: d.question,
+        dominantWrongOption: d.dominantWrongText, dominantWrongCount: d.dominantWrongCount, totalWrong: d.totalWrong, totalResponses: d.totalResponses,
+        misconceptionLabel: `Common confusion with "${d.dominantWrongText}"`,
+        microLesson: `${d.dominantWrongCount} student(s) chose "${d.dominantWrongText}" instead of the correct answer. Review the defining characteristic that distinguishes the correct answer from this distractor.`
+      }));
+      window.EduStore.saveMisconceptionReport(sessionId, fallbackReport);
+      this.render(fallbackReport, sessionId);
+    }
+  },
+
+  render(report, sessionId) {
+    const container = document.getElementById('misconception-report-container');
+    if (!container) return;
+
+    if (!report || report.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">✅ No significant misconceptions detected — class understood this session well!</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; background:rgba(251,188,4,0.08); border:1px solid rgba(251,188,4,0.25); border-radius:var(--radius); padding:14px;">
+        <span style="font-size:1.4rem;">🔬</span>
+        <div>
+          <div style="font-weight:600; font-size:0.9rem; color:var(--yellow);">Misconception Analysis Complete</div>
+          <div style="font-size:0.78rem; color:var(--text-muted);">${report.length} card${report.length !== 1 ? 's' : ''} with detectable misconceptions · Micro-lessons generated and sent to students</div>
+        </div>
+      </div>
+      ${report.map((item, idx) => `
+        <details style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); margin-bottom:12px; overflow:hidden;">
+          <summary style="padding:16px; cursor:pointer; display:flex; align-items:center; gap:12px; list-style:none; user-select:none;">
+            <span style="font-size:1.2rem; min-width:28px; text-align:center;">🔬</span>
+            <div style="flex:1;">
+              <div style="font-weight:600; font-size:0.88rem; line-height:1.4;">${item.question}</div>
+              <div style="font-size:0.75rem; margin-top:3px; color:var(--yellow);">${item.misconceptionLabel}</div>
+            </div>
+            <div style="text-align:right; white-space:nowrap;">
+              <div style="font-size:0.78rem; color:var(--text-dim);">${item.totalWrong}/${item.totalResponses} wrong</div>
+            </div>
+          </summary>
+          <div style="padding:0 16px 16px 16px; border-top:1px solid var(--border-light);">
+            <div style="margin-top:14px; background:rgba(251,188,4,0.06); border-left:3px solid var(--yellow); padding:10px 14px; border-radius:0 var(--radius-sm) var(--radius-sm) 0;">
+              <div style="font-size:0.72rem; font-weight:700; color:var(--yellow); text-transform:uppercase; margin-bottom:5px;">Most-Chosen Wrong Option</div>
+              <div style="font-size:0.85rem; font-weight:500; color:var(--text);">${item.dominantWrongOption}</div>
+              <div style="font-size:0.74rem; color:var(--text-dim); margin-top:3px;">${item.dominantWrongCount} student${item.dominantWrongCount !== 1 ? 's' : ''} chose this</div>
+            </div>
+            <div style="margin-top:12px; background:rgba(52,168,83,0.06); border-left:3px solid var(--green-light); padding:10px 14px; border-radius:0 var(--radius-sm) var(--radius-sm) 0;">
+              <div style="font-size:0.72rem; font-weight:700; color:var(--green-light); text-transform:uppercase; margin-bottom:5px;">💡 Micro-Lesson for Students</div>
+              <div style="font-size:0.85rem; color:var(--text); line-height:1.6;">${item.microLesson}</div>
+            </div>
+          </div>
+        </details>
+      `).join('')}
+    `;
+
+    // Save micro-lessons so student.js can read them
+    const key = `ef_micro_lessons_${sessionId}`;
+    const lessons = {};
+    report.forEach(item => { lessons[item.cardId] = item.microLesson; });
+    localStorage.setItem(key, JSON.stringify(lessons));
+
+    if (typeof showToast === 'function') showToast('Misconception report ready! Micro-lessons saved for students.', 'success');
+  }
+};
+

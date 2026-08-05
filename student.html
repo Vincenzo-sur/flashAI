@@ -125,6 +125,11 @@
               <span style="font-size:1.1rem; display:block;">🎯</span>
               <span style="font-size:0.75rem; font-weight:600;">Smart Quiz</span>
             </button>
+            <!-- Day 19: Marketplace -->
+            <button class="study-mode-btn" data-mode="marketplace" id="marketplace-mode-btn" data-tooltip="Browse shared flashcard decks">
+              <span style="font-size:1.1rem; display:block;">🏪</span>
+              <span style="font-size:0.75rem; font-weight:600;">Marketplace</span>
+            </button>
           </div>
         </div>
       </div>
@@ -237,6 +242,18 @@
         <div class="card-body">
           <!-- Front -->
           <div class="card-body-front" id="card-front">
+            <!-- Day 19: Live Poll banner (shown when teacher broadcasts a poll) -->
+            <div id="student-poll-banner" style="display:none; background:rgba(52,168,83,0.08); border:1px solid rgba(52,168,83,0.3); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:14px;">
+              <div style="font-weight:600; font-size:0.85rem; color:var(--green-light); margin-bottom:8px; display:flex; align-items:center; gap:6px;">📡 <span id="student-poll-question-text">Poll question</span></div>
+              <div id="student-poll-options" style="display:flex; flex-direction:column; gap:6px;"></div>
+              <div id="student-poll-thankyou" style="display:none; font-size:0.78rem; color:var(--text-muted); margin-top:8px;">✅ Response recorded! Results will be shown by the teacher.</div>
+            </div>
+            <!-- Day 19: Micro-lesson box (shown on re-review of previously wrong cards) -->
+            <div id="micro-lesson-box" style="display:none; background:rgba(251,188,4,0.08); border:1px solid rgba(251,188,4,0.3); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:14px; position:relative;">
+              <button id="micro-lesson-dismiss" style="position:absolute; top:6px; right:8px; background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:1rem;">×</button>
+              <div style="font-size:0.78rem; font-weight:700; color:var(--yellow); margin-bottom:4px; display:flex; align-items:center; gap:5px;">💡 Common Mistake — Heads Up!</div>
+              <div id="micro-lesson-text" style="font-size:0.82rem; color:var(--text); line-height:1.5;"></div>
+            </div>
             <p class="card-question" id="review-question">
               Question text will load here.
             </p>
@@ -758,6 +775,55 @@
   <script src="js/store.js"></script>
   <script src="js/classroom-api.js"></script>
   <script src="js/student.js"></script>
+
+  <!-- Day 19: Collaborative Notes FAB -->
+  <button id="collab-notes-fab" title="Class Collaborative Notes" style="position:fixed; bottom:24px; right:24px; width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--green-mid),var(--green-light)); border:none; cursor:pointer; display:none; align-items:center; justify-content:center; font-size:1.4rem; box-shadow:0 4px 20px rgba(52,168,83,0.4); z-index:800; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.12)'" onmouseout="this.style.transform='scale(1)'">📝</button>
+
+  <!-- Day 19: Collaborative Notes Modal -->
+  <div class="planner-modal-overlay" id="collab-notes-modal-overlay" style="display:none;">
+    <div class="planner-modal-content" style="max-width:540px; max-height:80vh; display:flex; flex-direction:column;">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">📝</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);">Class Notes</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);" id="collab-notes-session-label">Shared notes for this session</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="collab-notes-close-btn">&times;</button>
+      </div>
+      <div style="padding:16px; border-bottom:1px solid var(--border);">
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="collab-note-input" class="input-field" placeholder="Share a key takeaway or insight with the class..." style="flex:1; padding:9px 12px; font-size:0.85rem;" maxlength="300" />
+          <button class="btn btn-green btn-sm" id="collab-note-submit-btn">Post</button>
+        </div>
+      </div>
+      <div style="flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px;" id="collab-notes-feed">
+        <div style="text-align:center; color:var(--text-dim); padding:30px; font-size:0.85rem;">No notes yet. Be the first to share a key insight! ✨</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 19: Marketplace Browse Modal -->
+  <div class="planner-modal-overlay" id="marketplace-modal-overlay" style="display:none;">
+    <div class="planner-modal-content" style="max-width:620px; max-height:80vh; display:flex; flex-direction:column;">
+      <div class="planner-modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">🏪</span>
+          <div>
+            <h3 style="margin:0; font-family:'Google Sans',sans-serif; font-size:1.05rem; color:var(--green-light);">Flashcard Marketplace</h3>
+            <span style="font-size:0.75rem; color:var(--text-dim);">Browse & import shared decks from the class library</span>
+          </div>
+        </div>
+        <button class="planner-close-btn" id="marketplace-modal-close-btn">&times;</button>
+      </div>
+      <div style="flex:1; overflow-y:auto; padding:16px;">
+        <div id="student-marketplace-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:14px;">
+          <div style="text-align:center; color:var(--text-dim); padding:40px; grid-column:1/-1; font-size:0.85rem;">🏪 No decks in the marketplace yet. Ask your teacher to publish a deck!</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>

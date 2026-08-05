@@ -133,6 +133,12 @@
                   <span class="nav-sub-dot"></span>
                   🤝 Peer Discussions
                 </div>
+                <!-- Day 19: Flashcard Marketplace -->
+                <div class="nav-sub-item" data-panel="marketplace" id="sub-marketplace">
+                  <span class="nav-sub-dot"></span>
+                  🏪 Marketplace
+                  <span class="nav-sub-badge" style="background:rgba(52,168,83,0.15); color:var(--green-light); border:1px solid rgba(52,168,83,0.4);">New</span>
+                </div>
               </div>
             </div>
           </div>
@@ -163,6 +169,18 @@
                   <span class="nav-sub-dot"></span>
                   📅 Practice Tracker
                   <span class="nav-sub-badge" style="background:rgba(52,168,83,0.15); color:var(--green-light); border:1px solid rgba(52,168,83,0.4);">Day 17</span>
+                </div>
+                <!-- Day 19: Misconception Detector -->
+                <div class="nav-sub-item" data-panel="misconceptions" id="sub-misconceptions">
+                  <span class="nav-sub-dot"></span>
+                  🔬 Misconception Detector
+                  <span class="nav-sub-badge" style="background:rgba(251,188,4,0.15); color:var(--yellow); border:1px solid rgba(251,188,4,0.4);">AI</span>
+                </div>
+                <!-- Day 19: Live Poll -->
+                <div class="nav-sub-item" data-panel="live-poll" id="sub-live-poll">
+                  <span class="nav-sub-dot"></span>
+                  📡 Live Poll
+                  <span class="nav-sub-badge" style="background:rgba(52,168,83,0.15); color:var(--green-light); border:1px solid rgba(52,168,83,0.4);">New</span>
                 </div>
               </div>
             </div>
@@ -710,6 +728,16 @@
           <div id="heatmap-container" style="display:none;">
             <!-- Populated by renderCardDifficultyHeatMap() -->
           </div>
+          <!-- Day 19: Analyze Misconceptions Button (shown when results are loaded) -->
+          <div id="misconception-analyze-bar" style="display:none; margin-top:20px; padding:16px; background:rgba(251,188,4,0.06); border:1px solid rgba(251,188,4,0.25); border-radius:var(--radius); display:none;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+              <div>
+                <div style="font-weight:600; font-size:0.9rem; color:var(--yellow); display:flex; align-items:center; gap:6px;">🔬 AI Misconception Detector</div>
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Gemini will analyze which wrong options students chose and identify the conceptual confusion behind each mistake.</div>
+              </div>
+              <button class="btn btn-sm" id="btn-analyze-misconceptions" style="background:rgba(251,188,4,0.15); color:var(--yellow); border:1px solid rgba(251,188,4,0.4); white-space:nowrap;">🔬 Analyze Misconceptions</button>
+            </div>
+          </div>
         </div>
 
         <!-- Day 18 Panel: Student Questions -->
@@ -930,6 +958,102 @@
             <p style="font-size:0.85rem; color:var(--text-dim); text-align:center; padding:30px 0;">
               📅 No practice plans saved yet. Students who save plans after completing a session will appear here.
             </p>
+          </div>
+        </div>
+
+        <!-- Day 19: Misconception Detector Panel -->
+        <div class="panel-content" id="panel-misconceptions" role="tabpanel">
+          <div class="sessions-toolbar" style="margin-bottom:20px;">
+            <div>
+              <span class="sessions-title">🔬 AI Misconception Detector</span>
+              <span class="sessions-count">Powered by Gemini AI</span>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <select id="misconception-session-select" class="form-input" style="max-width:280px; font-size:0.82rem;">
+                <option value="">— Select a session to analyze —</option>
+              </select>
+              <button class="btn btn-sm" id="btn-run-misconception-analysis" style="background:rgba(251,188,4,0.15); color:var(--yellow); border:1px solid rgba(251,188,4,0.4);">🔬 Run Analysis</button>
+            </div>
+          </div>
+          <div id="misconception-loading" style="display:none; font-size:0.85rem; color:var(--yellow); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+            <span style="animation:spin 1s linear infinite; display:inline-block;">⚙️</span> Gemini is analyzing wrong-answer patterns and identifying misconceptions...
+          </div>
+          <div id="misconception-report-container">
+            <div style="text-align:center; padding:50px 20px; color:var(--text-dim);">
+              <div style="font-size:2.5rem; margin-bottom:12px;">🔬</div>
+              <div style="font-size:1rem; font-weight:600; margin-bottom:6px;">Misconception Analysis</div>
+              <div style="font-size:0.82rem;">Select a session and click "Run Analysis" to identify what concepts students are confusing based on their MCQ wrong-answer patterns.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Day 19: Live Poll Panel -->
+        <div class="panel-content" id="panel-live-poll" role="tabpanel">
+          <div class="sessions-toolbar" style="margin-bottom:20px;">
+            <div>
+              <span class="sessions-title">📡 Live Class Poll</span>
+              <span class="sessions-count">Broadcast a question — see results in real-time</span>
+            </div>
+          </div>
+          <!-- Poll Composer -->
+          <div id="poll-composer-wrap" style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; margin-bottom:20px;">
+            <div style="font-weight:600; font-size:0.9rem; color:var(--green-light); margin-bottom:14px; display:flex; align-items:center; gap:6px;">📝 Compose Poll Question</div>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label" for="poll-question-input">Poll Question</label>
+              <input type="text" id="poll-question-input" class="form-input" placeholder="e.g. Which of Newton's laws applies to inertia?" />
+            </div>
+            <div id="poll-options-inputs" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+              <div class="form-group">
+                <label class="form-label">Options (2–4)</label>
+                <input type="text" class="form-input poll-option-input" placeholder="Option A" />
+                <input type="text" class="form-input poll-option-input" placeholder="Option B" style="margin-top:8px;" />
+                <input type="text" class="form-input poll-option-input" placeholder="Option C (optional)" style="margin-top:8px;" />
+                <input type="text" class="form-input poll-option-input" placeholder="Option D (optional)" style="margin-top:8px;" />
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-green btn-sm" id="btn-launch-poll">📡 Launch Poll</button>
+              <button class="btn btn-outline btn-sm" id="btn-end-poll" style="display:none;">⛔ End Poll</button>
+            </div>
+          </div>
+          <!-- Live Results -->
+          <div id="poll-live-results" style="display:none; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <div style="font-weight:600; font-size:0.95rem;" id="poll-live-question-title">Live Poll Results</div>
+              <span id="poll-live-status-badge" style="font-size:0.72rem; padding:3px 10px; border-radius:10px; font-weight:600; background:rgba(52,168,83,0.15); color:var(--green-light); border:1px solid rgba(52,168,83,0.3);">🟢 Live</span>
+            </div>
+            <div id="poll-bars-container" style="display:flex; flex-direction:column; gap:12px;">
+              <!-- Injected by JS -->
+            </div>
+            <div style="margin-top:14px; font-size:0.78rem; color:var(--text-dim); text-align:right;" id="poll-total-voters">0 responses</div>
+          </div>
+        </div>
+
+        <!-- Day 19: Marketplace Panel -->
+        <div class="panel-content" id="panel-marketplace" role="tabpanel">
+          <div class="sessions-toolbar" style="margin-bottom:20px;">
+            <div>
+              <span class="sessions-title">🏪 Flashcard Marketplace</span>
+              <span class="sessions-count">Publish, browse and import shared decks</span>
+            </div>
+          </div>
+          <!-- Publish Section -->
+          <div style="background:rgba(52,168,83,0.06); border:1px solid rgba(52,168,83,0.2); border-radius:var(--radius-lg); padding:18px; margin-bottom:22px;">
+            <div style="font-weight:600; font-size:0.9rem; color:var(--green-light); margin-bottom:10px;">📤 Publish a Deck to Marketplace</div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <select id="marketplace-publish-select" class="form-input" style="flex:1; min-width:200px; font-size:0.82rem;">
+                <option value="">— Select a session/draft to publish —</option>
+              </select>
+              <button class="btn btn-green btn-sm" id="btn-publish-marketplace">📤 Publish</button>
+            </div>
+          </div>
+          <!-- Browse grid -->
+          <div style="font-weight:600; font-size:0.9rem; color:var(--text); margin-bottom:14px;">📚 Available Decks</div>
+          <div id="marketplace-decks-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+            <div style="text-align:center; padding:40px 20px; color:var(--text-dim); grid-column:1/-1;">
+              <div style="font-size:2.5rem; margin-bottom:10px;">🏪</div>
+              <div style="font-size:0.9rem;">No decks published yet. Be the first to share a deck with your class!</div>
+            </div>
           </div>
         </div>
 
