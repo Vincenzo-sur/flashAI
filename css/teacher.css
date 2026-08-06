@@ -3372,3 +3372,15 @@
   color: #fff;
   flex-shrink: 0;
 }
+
+/* Day 20: Attendance Table hover and Bookmark hover styles */
+.results-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+.bookmark-btn {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.bookmark-btn:hover {
+  transform: scale(1.2);
+  color: var(--yellow) !important;
+}

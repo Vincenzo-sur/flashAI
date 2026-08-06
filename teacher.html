@@ -139,6 +139,11 @@
                   🏪 Marketplace
                   <span class="nav-sub-badge" style="background:rgba(52,168,83,0.15); color:var(--green-light); border:1px solid rgba(52,168,83,0.4);">New</span>
                 </div>
+                <!-- Day 20: Class Attendance Tracker -->
+                <div class="nav-sub-item" data-panel="attendance" id="sub-attendance">
+                  <span class="nav-sub-dot"></span>
+                  📋 Attendance
+                </div>
               </div>
             </div>
           </div>
@@ -1054,6 +1059,49 @@
               <div style="font-size:2.5rem; margin-bottom:10px;">🏪</div>
               <div style="font-size:0.9rem;">No decks published yet. Be the first to share a deck with your class!</div>
             </div>
+          </div>
+        </div>
+
+        <!-- Day 20: Class Attendance Tracker Panel -->
+        <div class="panel-content" id="panel-attendance" role="tabpanel">
+          <div class="panel-header" style="margin-bottom:20px;">
+            <div>
+              <h2 class="panel-title">📋 Class Attendance Tracker</h2>
+              <p class="panel-sub">Monitor student participation and submission rates across all published flashcard sessions.</p>
+            </div>
+          </div>
+          
+          <div class="analytics-grid" style="margin-bottom:20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+            <div class="analytics-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+              <span class="stat-card-title" style="color: var(--text-dim); font-size: 0.85rem; font-weight: 500;">Average Attendance Rate</span>
+              <span class="stat-card-val" id="stat-attendance-avg" style="font-size: 2rem; font-weight: 700; color: var(--green-light);">0%</span>
+            </div>
+            <div class="analytics-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+              <span class="stat-card-title" style="color: var(--text-dim); font-size: 0.85rem; font-weight: 500;">Most Active Session</span>
+              <span class="stat-card-val" id="stat-attendance-best" style="font-size: 1.1rem; font-weight: 700; color: var(--text); word-break: break-word; line-height: 1.3;">N/A</span>
+            </div>
+            <div class="analytics-stat-card" style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+              <span class="stat-card-title" style="color: var(--text-dim); font-size: 0.85rem; font-weight: 500;">Total Submissions</span>
+              <span class="stat-card-val" id="stat-attendance-total-subs" style="font-size: 2rem; font-weight: 700; color: var(--yellow);">0</span>
+            </div>
+          </div>
+
+          <div class="table-container" style="background:var(--bg-card); border:1px solid var(--border-light); border-radius:var(--radius-lg); padding:20px; overflow-x: auto;">
+            <table class="results-table" style="width:100%; border-collapse:collapse; min-width: 600px;" id="attendance-table">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border-light); text-align:left; color:var(--text-dim); font-size:0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <th style="padding:12px 10px;">Session Topic</th>
+                  <th style="padding:12px 10px;">Subject</th>
+                  <th style="padding:12px 10px;">Date</th>
+                  <th style="padding:12px 10px; text-align: center;">Submissions</th>
+                  <th style="padding:12px 10px; text-align: center;">Attendance Rate</th>
+                  <th style="padding:12px 10px; text-align: right;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-table-body" style="font-size: 0.9rem;">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
           </div>
         </div>
 

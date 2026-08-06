@@ -65,6 +65,8 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 16: Personalized AI Practice Planner & Memory Retention Schedule** — AI practice frequency generator based on student score and self-ratings, memory retention forecast timeline bar, preferred study time selector, 1-click `.ics` iCalendar download, and persistent student practice schedule drawer (Day 16)
 - [x] **Day 17: AI-Powered Practice Planner Optimization & Class Practice Tracker** — Gemini AI-generated personalized practice schedule (replaces static heuristic), Ebbinghaus Forgetting Curve canvas visualization with review-date dots, collapsible "Why this schedule?" accordion with scientific rationale, study time preference persistence across sessions, AI Plan badge on Gemini-generated schedules, enhanced My Planner modal with next-review ETA and past-step greying, and Teacher Class Practice Tracker panel (Analytics → Practice Tracker) with status badges, summary chips, and Remind All copyable message generator (Day 17)
 - [x] **Day 18: Student Question Board, Peer Discussion Hub & Smart Quiz Generator** — One-tap "Ask Teacher" doubt submission on flashcards with teacher Question Board panel and reply workflow, Peer Discussion Hub for student-to-student doubt solving with upvotes and Best Answer system, Smart Quiz adaptive timed challenge mode with canvas score badge generator, and fixed S/N card keyboard shortcuts (Day 18)
+- [x] **Day 19: Flashcard Marketplace, Live Poll Engine & AI Misconception Detector** — Publish sessions to community marketplace, browser shared decks, active teacher live polling widget, and student wrong-answer misconception analysis with micro-lessons (Day 19)
+- [x] **Day 20: Session Bookmarks, Quick Deck Duplicate & Class Attendance Tracker** — Pinned favorite sessions sorted at the top, one-click deck duplication into drafts, and student attendance tracker metrics table with color-coded submission rates (Day 20)
 
 ---
 
@@ -217,8 +219,14 @@ cd flashAI
   - 🤝 **Peer Discussion Hub** — Student-to-student doubt solving modal (`#discussion-modal-overlay`), card/topic filtering, upvote system (`👍`), and Best Answer marking (`⭐`) leveraging the 90% retention peer-teaching effect.
   - 🎯 **Smart Quiz Generator** — Adaptive timed challenge mode (`data-mode="quiz"`), custom duration selector (5/10/15 min), canvas-drawn shareable performance card, and 1-click PNG download.
   - ⌨️ **Keyboard Shortcut Fix** — Star (`S`) and Note (`N`) shortcuts now properly execute in student card viewer.
-
-
+- [x] **Day 19: Flashcard Marketplace, Live Poll Engine & AI Misconception Detector**
+  - 🏪 **Marketplace** — Teachers publish session decks; students browse, rate, and import decks to drafts.
+  - 📡 **Live Poll Engine** — Teachers launch real-time poll questions with active voter dashboard; student-side responsive poll banner.
+  - 🔬 **AI Misconception Detector** — Gemini analyzes student incorrect patterns and saves targeted 2-sentence micro-lesson hints.
+- [x] **Day 20: Session Bookmarks, Quick Deck Duplicate & Class Attendance Tracker**
+  - ⭐ **Session Bookmarks** — Pinned favorite sessions remain sorted at the top of the All Sessions panel list.
+  - 📋 **Quick Duplicate** — One-click deck duplication cloning questions directly into unpublished drafts for editing.
+  - 📋 **Class Attendance Tracker** — Sidebar monitoring panel displaying student attendance rate table with mini progress bars.
 
 ---
 

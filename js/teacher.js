@@ -213,6 +213,10 @@ function switchPanel(panelId) {
   if (panelId === 'practice-tracker') {
     if (typeof TeacherPracticeTracker !== 'undefined') TeacherPracticeTracker.renderTable();
   }
+  // Day 20: Refresh Attendance Tracker when switching to that panel
+  if (panelId === 'attendance') {
+    if (typeof renderAttendance === 'function') renderAttendance();
+  }
   // Day 18: Render Questions Board and Discussions Overview
   if (panelId === 'questions') {
     renderQuestionBoard();
@@ -763,7 +767,18 @@ function renderAllSessions() {
         </div>
       `;
     } else {
-      filtered.forEach(session => {
+      // Day 20: Retrieve bookmarks and sort
+      const bookmarkedIds = getBookmarkedSessions();
+      const sorted = [...filtered].sort((a, b) => {
+        const aBook = bookmarkedIds.includes(a.id) ? 1 : 0;
+        const bBook = bookmarkedIds.includes(b.id) ? 1 : 0;
+        if (aBook !== bBook) {
+          return bBook - aBook; // bookmarked first
+        }
+        return 0; // maintain relative order
+      });
+
+      sorted.forEach(session => {
         const deck = document.createElement('div');
         deck.className = 'overlapping-card-deck';
         
@@ -773,12 +788,19 @@ function renderAllSessions() {
         const compPercent = Math.round((resCount / studentCount) * 100);
         const compClass = compPercent < 35 ? 'low' : compPercent < 75 ? 'mid' : 'high';
 
+        // Day 20: bookmark button
+        const isBookmarked = bookmarkedIds.includes(session.id);
+        const bookmarkBtn = `<button class="bookmark-btn" onclick="toggleSessionBookmark('${session.id}')" title="${isBookmarked ? 'Unbookmark session' : 'Bookmark session'}" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: ${isBookmarked ? 'var(--yellow)' : 'var(--text-dim)'}; margin-right: 6px; padding: 2px;">★</button>`;
+
         deck.innerHTML = `
           <div class="deck-layer deck-layer-back-2"></div>
           <div class="deck-layer deck-layer-back-1"></div>
           <div class="session-card deck-card-front">
-            <div class="session-card-header">
-              <div class="session-card-topic" title="${escapeHTML(session.topic)}">${escapeHTML(session.topic)}</div>
+            <div class="session-card-header" style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; overflow: hidden; gap: 4px;">
+                ${bookmarkBtn}
+                <div class="session-card-topic" title="${escapeHTML(session.topic)}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(session.topic)}</div>
+              </div>
               <span class="session-status-badge badge-${session.status}">
                 ${session.status === 'live' ? '● Live' : 'Closed'}
               </span>
@@ -797,6 +819,7 @@ function renderAllSessions() {
             <div class="session-card-footer">
               <button class="action-btn" onclick="viewSessionResults('${session.id}')">Results</button>
               <button class="action-btn" onclick="openShareModal('${session.id}')">🔗 Share</button>
+              <button class="action-btn" onclick="duplicateSession('${session.id}')" title="Duplicate Deck">📋 Duplicate</button>
               <button class="action-btn" onclick="exportToAnkiCsv('${session.id}')">📄 Anki</button>
               ${session.status === 'live' ? `<button class="action-btn" onclick="closeSession('${session.id}')">Close</button>` : ''}
               <button class="action-btn action-btn-danger" onclick="deleteSavedSession('${session.id}')">Delete</button>
@@ -4102,5 +4125,116 @@ Return ONLY valid JSON array, no markdown.`;
 
     if (typeof showToast === 'function') showToast('Misconception report ready! Micro-lessons saved for students.', 'success');
   }
+};
+
+// ── Day 20: Bookmarked Sessions, Duplication & Attendance Tracker ────────────
+
+function getBookmarkedSessions() {
+  try {
+    return JSON.parse(localStorage.getItem('ef_bookmarked_sessions')) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+window.toggleSessionBookmark = function(id) {
+  let bookmarked = getBookmarkedSessions();
+  if (bookmarked.includes(id)) {
+    bookmarked = bookmarked.filter(x => x !== id);
+    if (typeof showToast === 'function') showToast('Bookmark removed. 📌', 'info');
+  } else {
+    bookmarked.push(id);
+    if (typeof showToast === 'function') showToast('Session bookmarked! ⭐', 'success');
+  }
+  localStorage.setItem('ef_bookmarked_sessions', JSON.stringify(bookmarked));
+  renderAllSessions();
+};
+
+window.duplicateSession = function(id) {
+  const session = window.EduStore.getSessionById(id);
+  if (!session) return;
+  const duplicate = {
+    id: 'session-' + Date.now(),
+    subject: session.subject || 'General',
+    topic: `${session.topic} (Copy)`,
+    date: new Date().toISOString().split('T')[0],
+    status: 'draft',
+    cards: JSON.parse(JSON.stringify(session.cards)),
+    responses: []
+  };
+  window.EduStore.addSession(duplicate);
+  renderAllSessions();
+  if (typeof showToast === 'function') showToast('Session duplicated as draft! 📋', 'success');
+};
+
+window.renderAttendance = function() {
+  const tableBody = document.getElementById('attendance-table-body');
+  if (!tableBody) return;
+  
+  const sessions = window.EduStore.getSessions().filter(s => s.status !== 'draft');
+  const studentCount = 28; // class size mock constant
+  
+  tableBody.innerHTML = '';
+  
+  if (sessions.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-dim);">
+          No active or closed sessions yet. Publish a session first to track attendance.
+        </td>
+      </tr>
+    `;
+    document.getElementById('stat-attendance-avg').textContent = '0%';
+    document.getElementById('stat-attendance-best').textContent = 'N/A';
+    document.getElementById('stat-attendance-total-subs').textContent = '0';
+    return;
+  }
+  
+  let totalSubmissions = 0;
+  let maxAttendancePercent = -1;
+  let bestSessionTopic = 'N/A';
+  let totalAttendancePercentSum = 0;
+  
+  sessions.forEach(session => {
+    const resCount = session.responses ? session.responses.length : 0;
+    const rate = Math.round((resCount / studentCount) * 100);
+    totalSubmissions += resCount;
+    totalAttendancePercentSum += rate;
+    
+    if (rate > maxAttendancePercent) {
+      maxAttendancePercent = rate;
+      bestSessionTopic = session.topic;
+    }
+    
+    const rateColor = rate < 35 ? 'var(--red)' : rate < 75 ? 'var(--yellow)' : 'var(--green-light)';
+    const statusText = session.status === 'live' ? '● Live' : 'Closed';
+    const statusClass = session.status === 'live' ? 'badge-live' : 'badge-closed';
+    
+    const row = document.createElement('tr');
+    row.style.borderBottom = '1px solid var(--border-light)';
+    row.innerHTML = `
+      <td style="padding: 14px 10px; font-weight: 500; color: var(--text);">${escapeHTML(session.topic)}</td>
+      <td style="padding: 14px 10px; color: var(--text-dim);">${escapeHTML(session.subject || 'Physics')}</td>
+      <td style="padding: 14px 10px; color: var(--text-dim);">${session.date}</td>
+      <td style="padding: 14px 10px; text-align: center; font-weight: 500;">${resCount} / ${studentCount}</td>
+      <td style="padding: 14px 10px; text-align: center;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span style="font-weight: 600; color: ${rateColor};">${rate}%</span>
+          <div style="width: 60px; height: 6px; background: var(--border-light); border-radius: 3px; overflow: hidden; display: inline-block;">
+            <div style="width: ${Math.min(rate, 100)}%; height: 100%; background: ${rateColor}; border-radius: 3px;"></div>
+          </div>
+        </div>
+      </td>
+      <td style="padding: 14px 10px; text-align: right;">
+        <span class="session-status-badge ${statusClass}" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">${statusText}</span>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+  
+  const avgAttendance = Math.round(totalAttendancePercentSum / sessions.length);
+  document.getElementById('stat-attendance-avg').textContent = `${avgAttendance}%`;
+  document.getElementById('stat-attendance-best').textContent = maxAttendancePercent >= 0 ? `${bestSessionTopic} (${maxAttendancePercent}%)` : 'N/A';
+  document.getElementById('stat-attendance-total-subs').textContent = totalSubmissions;
 };
 
