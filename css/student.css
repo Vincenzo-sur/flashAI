@@ -2528,5 +2528,26 @@
   align-items: center;
 }
 
+/* Day 21: Streak dot and Star Rating styles */
+.star-rating-btn {
+  transition: transform 0.2s ease, color 0.2s ease;
+  color: var(--text-dim);
+}
+.star-rating-btn.active {
+  color: var(--yellow);
+}
+.star-rating-btn:hover {
+  transform: scale(1.25);
+  color: var(--yellow) !important;
+}
+.streak-dot {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+.streak-dot:hover {
+  transform: scale(1.3);
+  filter: brightness(1.2);
+}
+
 
 

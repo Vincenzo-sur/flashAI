@@ -143,6 +143,37 @@
       </p>
     </div>
 
+    <!-- Day 21: Study Streak Dashboard -->
+    <div class="student-entry-card" id="streak-card" style="display: none; margin-top: 10px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.5rem;">🔥</span>
+          <span style="font-weight: 600; font-size: 1.1rem; color: var(--text);">Daily Study Streak</span>
+        </div>
+        <span class="due-badge" id="streak-badge-count" style="background: rgba(251,188,4,0.15); color: var(--yellow); border: 1px solid rgba(251,188,4,0.4);">0 Days</span>
+      </div>
+      
+      <div class="analytics-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; text-align: center;">
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 8px;">
+          <div style="font-size: 0.72rem; color: var(--text-dim);">Current Streak</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--yellow); margin-top: 4px;" id="streak-current">0 days</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 8px;">
+          <div style="font-size: 0.72rem; color: var(--text-dim);">Longest Streak</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--green-light); margin-top: 4px;" id="streak-longest">0 days</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 8px;">
+          <div style="font-size: 0.72rem; color: var(--text-dim);">Total Reviews</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 4px;" id="streak-total">0 sessions</div>
+        </div>
+      </div>
+
+      <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px; font-weight: 600;">Last 14 Days Activity</div>
+      <div style="display: flex; gap: 6px; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 10px;" id="streak-heatmap-row">
+        <!-- 14 dots will be injected here -->
+      </div>
+    </div>
+
     <!-- ── Student Active Reviewer Container (hidden by default) ── -->
     <div class="student-active-review" id="review-container">
       <!-- Progress Bar -->
@@ -489,6 +520,20 @@
             <div id="personal-best-display"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Day 21: Session Feedback Rating -->
+      <div class="feedback-card" id="feedback-card" style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 20px; width: 100%; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 0.85rem; color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">⭐ Rate this Flashcard Session</span>
+        <div class="rating-stars" id="feedback-stars-container" style="display: flex; justify-content: center; gap: 8px; font-size: 2rem; cursor: pointer; color: var(--text-dim); margin-bottom: 12px;">
+          <span class="star-rating-btn" data-val="1">★</span>
+          <span class="star-rating-btn" data-val="2">★</span>
+          <span class="star-rating-btn" data-val="3">★</span>
+          <span class="star-rating-btn" data-val="4">★</span>
+          <span class="star-rating-btn" data-val="5">★</span>
+        </div>
+        <textarea id="feedback-text-input" class="input-field" placeholder="Optional: Any feedback on these cards? (e.g. too easy, hard, mistakes)" style="width: 100%; min-height: 50px; font-size: 0.82rem; border-radius: var(--radius); padding: 8px; margin-bottom: 12px; resize: vertical; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: var(--text);"></textarea>
+        <button class="btn btn-green btn-sm" id="btn-submit-feedback" style="width: 100%;">Submit Feedback</button>
       </div>
 
       <button class="btn btn-green entry-btn" id="exit-btn">

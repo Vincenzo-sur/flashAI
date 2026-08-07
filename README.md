@@ -67,6 +67,7 @@ Teacher dashboard → weak topics vs strong topics
 - [x] **Day 18: Student Question Board, Peer Discussion Hub & Smart Quiz Generator** — One-tap "Ask Teacher" doubt submission on flashcards with teacher Question Board panel and reply workflow, Peer Discussion Hub for student-to-student doubt solving with upvotes and Best Answer system, Smart Quiz adaptive timed challenge mode with canvas score badge generator, and fixed S/N card keyboard shortcuts (Day 18)
 - [x] **Day 19: Flashcard Marketplace, Live Poll Engine & AI Misconception Detector** — Publish sessions to community marketplace, browser shared decks, active teacher live polling widget, and student wrong-answer misconception analysis with micro-lessons (Day 19)
 - [x] **Day 20: Session Bookmarks, Quick Deck Duplicate & Class Attendance Tracker** — Pinned favorite sessions sorted at the top, one-click deck duplication into drafts, and student attendance tracker metrics table with color-coded submission rates (Day 20)
+- [x] **Day 21: Student Study Streaks & Session Feedback Rating** — Gamified study streaks dashboard with 14-day heatmap dots, 1-to-5 star quality feedback on completion, and average session ratings + comment list on the teacher dashboard (Day 21)
 
 ---
 
@@ -227,6 +228,10 @@ cd flashAI
   - ⭐ **Session Bookmarks** — Pinned favorite sessions remain sorted at the top of the All Sessions panel list.
   - 📋 **Quick Duplicate** — One-click deck duplication cloning questions directly into unpublished drafts for editing.
   - 📋 **Class Attendance Tracker** — Sidebar monitoring panel displaying student attendance rate table with mini progress bars.
+- [x] **Day 21: Student Study Streaks & Session Feedback Rating**
+  - 🔥 **Study Streaks** — Student dashboard widget showing current/longest streak stats and 14-day history heatmap activity dots.
+  - ⭐ **Session Feedback** — Integrated completion card widget collecting 1-5 star ratings and comment cards from students.
+  - 💬 **Feedback Dashboard** — Aggregated star reviews and student feedback lists rendered on the teacher results detail panel.
 
 ---
 

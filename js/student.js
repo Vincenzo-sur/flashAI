@@ -9,6 +9,16 @@ let sessionAnswers = []; // Tracks responses for this review session: [{ cardId,
 let selectedStudyMode = 'standard';
 let speedTimerInterval = null;
 let speedSecondsLeft = 15;
+let currentStudentId = null; // Day 21: Track student ID to link feedback submissions
+window.pendingResponsePayload = null; // Day 21: Hold review payload to submit atomically
+
+// Day 21: Local timezone date string helper
+function getLocalDateString(dateObj) {
+  const d = dateObj || new Date();
+  const offset = d.getTimezoneOffset();
+  const localTime = new Date(d.getTime() - (offset * 60 * 1000));
+  return localTime.toISOString().split('T')[0];
+}
 
 // ── Day 11: Spaced Repetition Engine ─────────────────────────
 const SpacedRepetitionEngine = {
@@ -701,6 +711,12 @@ function setupStudentApp() {
   initKeyboardShortcuts(); // Day 11
   FocusTimer.init(); // Day 15
   renderProficiencyPanel(); // Day 15
+  
+  try {
+    renderStudentStreakDashboard();
+  } catch(e) {
+    console.warn("Streak Dashboard error:", e);
+  }
 
   // Day 6: init Firebase in background without blocking UI
   if (typeof window.EduStore !== 'undefined' && window.EduStore.initFirebase) {
@@ -1256,10 +1272,22 @@ function handleOptionSelection(optIndex, correctIndex) {
 
 // ── Self Rating Click Handler ──────────────────────────────
 function handleSelfRating(ratingType) {
-  const currentAnswer = sessionAnswers[currentCardIndex];
-  if (!currentAnswer) return;
-
-  currentAnswer.rating = ratingType;
+  let currentAnswer = sessionAnswers[currentCardIndex];
+  if (!currentAnswer) {
+    const card = currentSession.cards[currentCardIndex];
+    currentAnswer = {
+      cardId: card.id,
+      selectedIndex: -1,
+      isCorrect: ratingType === 'know' || ratingType === 'fuzzy',
+      rating: ratingType
+    };
+    sessionAnswers[currentCardIndex] = currentAnswer;
+  } else {
+    currentAnswer.rating = ratingType;
+    if (ratingType === 'nope') {
+      currentAnswer.isCorrect = false;
+    }
+  }
 
   // Day 14: Award XP for confident rating
   if (ratingType === 'know') XPEngine.awardXP(5, 'Know it rating');
@@ -1317,9 +1345,24 @@ function initReviewControls() {
     }
   });
 
-  exitBtn.addEventListener('click', () => {
+  exitBtn.addEventListener('click', async (e) => {
+    if (e) e.preventDefault();
+    exitBtn.disabled = true;
+    exitBtn.textContent = 'Saving...';
+
+    if (window.pendingResponsePayload) {
+      const syncEl = document.getElementById('sync-status');
+      if (syncEl) syncEl.textContent = '💾 Saving response...';
+      try {
+        await window.EduStore.addStudentResponse(currentSession.id, window.pendingResponsePayload);
+      } catch(err) {
+        console.error("Exit save error:", err);
+      }
+      window.pendingResponsePayload = null;
+    }
+    
     SessionResume.clear(); // Day 15: clear resume on deliberate exit
-    window.location.reload();
+    window.location.href = 'student.html'; // Day 21: Redirect to clean landing page to show streak card
   });
 }
 
@@ -1336,11 +1379,57 @@ async function finishReview() {
   const accuracy = Math.round((correctCount / currentSession.cards.length) * 100);
 
   // Compile final payload
-  const studentId = 'stud-' + Math.floor(Math.random() * 9000 + 1000);
+  currentStudentId = 'stud-' + Math.floor(Math.random() * 9000 + 1000);
   const responsePayload = {
-    studentId: studentId,
-    cardResponses: sessionAnswers
+    studentId: currentStudentId,
+    cardResponses: sessionAnswers,
+    feedbackRating: 0,
+    feedbackComment: ''
   };
+
+  // Day 21: Reset feedback UI card
+  const fbCard = document.getElementById('feedback-card');
+  if (fbCard) {
+    fbCard.innerHTML = `
+      <span style="font-size: 0.85rem; color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">⭐ Rate this Flashcard Session</span>
+      <div class="rating-stars" id="feedback-stars-container" style="display: flex; justify-content: center; gap: 8px; font-size: 2rem; cursor: pointer; color: var(--text-dim); margin-bottom: 12px;">
+        <span class="star-rating-btn" data-val="1">★</span>
+        <span class="star-rating-btn" data-val="2">★</span>
+        <span class="star-rating-btn" data-val="3">★</span>
+        <span class="star-rating-btn" data-val="4">★</span>
+        <span class="star-rating-btn" data-val="5">★</span>
+      </div>
+      <textarea id="feedback-text-input" class="input-field" placeholder="Optional: Any feedback on these cards? (e.g. too easy, hard, mistakes)" style="width: 100%; min-height: 50px; font-size: 0.82rem; border-radius: var(--radius); padding: 8px; margin-bottom: 12px; resize: vertical; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: var(--text);"></textarea>
+      <button class="btn btn-green btn-sm" id="btn-submit-feedback" style="width: 100%;">Submit Feedback</button>
+    `;
+    
+    // Wire star hover/clicks dynamically
+    let selectedFeedbackRating = 0;
+    const stars = fbCard.querySelectorAll('.star-rating-btn');
+    stars.forEach(star => {
+      star.onclick = function() {
+        const val = parseInt(this.dataset.val);
+        selectedFeedbackRating = val;
+        stars.forEach(s => {
+          const sVal = parseInt(s.dataset.val);
+          s.classList.toggle('active', sVal <= val);
+        });
+      };
+    });
+    
+    // Wire submit click
+    const submitBtn = fbCard.querySelector('#btn-submit-feedback');
+    if (submitBtn) {
+      submitBtn.onclick = function() {
+        if (selectedFeedbackRating === 0) {
+          if (typeof showToast === 'function') showToast('Please select a star rating first! ⭐', 'warning');
+          return;
+        }
+        const comment = fbCard.querySelector('#feedback-text-input').value.trim();
+        window.submitSessionFeedback(selectedFeedbackRating, comment);
+      };
+    }
+  }
 
   // Day 15: Clear resume state on finish
   SessionResume.clear();
@@ -1399,21 +1488,20 @@ async function finishReview() {
   // We check leveledUp from any of the xpResult calls
   if (xpResult && xpResult.leveledUp) showLevelUpModal(xpResult.newLevel);
 
-  // Day 6: show sync status, then submit (async)
+  // Day 21: Setup atomic in-flight response payload
+  window.pendingResponsePayload = responsePayload;
+
+  // Day 6: show sync status (advise student feedback is ready to submit)
   const syncEl = document.getElementById('sync-status');
   if (syncEl) {
-    const isCloud = typeof window.EduStore !== 'undefined' && window.EduStore.isFirebaseEnabled();
     syncEl.style.display = 'block';
-    syncEl.textContent = isCloud ? '☁️ Syncing to cloud…' : '💾 Saved locally';
+    syncEl.textContent = '✍️ Rate this session below to complete submission';
   }
 
-  await window.EduStore.addStudentResponse(currentSession.id, responsePayload);
-
-  if (syncEl) {
-    syncEl.textContent = window.EduStore.isFirebaseEnabled()
-      ? '✅ Synced to cloud — teacher dashboard updated!'
-      : '✅ Saved locally';
-  }
+  // Update streaks in memory immediately
+  try {
+    renderStudentStreakDashboard();
+  } catch(e) {}
 
   // Day 8: Google Classroom Turn-In
   const params = new URLSearchParams(window.location.search);
@@ -3949,6 +4037,150 @@ function checkAndShowMicroLesson(sessionId, cardId) {
     box.style.display = 'block';
   } catch(e) { /* silently fail */ }
 }
+
+// ── Day 21: Study Streaks & Session Feedback Ratings ────────────────────────
+
+window.submitSessionFeedback = async function(rating, comment) {
+  if (!currentSession || !window.pendingResponsePayload) return;
+  
+  window.pendingResponsePayload.feedbackRating = rating;
+  window.pendingResponsePayload.feedbackComment = comment;
+  
+  const syncEl = document.getElementById('sync-status');
+  if (syncEl) {
+    const isCloud = typeof window.EduStore !== 'undefined' && window.EduStore.isFirebaseEnabled();
+    syncEl.textContent = isCloud ? '☁️ Syncing to cloud…' : '💾 Saving locally…';
+  }
+  
+  try {
+    await window.EduStore.addStudentResponse(currentSession.id, window.pendingResponsePayload);
+    window.pendingResponsePayload = null; // Reset to prevent exit double-submission
+    
+    if (syncEl) {
+      syncEl.textContent = window.EduStore.isFirebaseEnabled()
+        ? '✅ Synced to cloud — teacher dashboard updated!'
+        : '✅ Saved locally';
+    }
+    if (typeof showToast === 'function') showToast('Feedback submitted! Thanks! ❤️', 'success');
+  } catch (err) {
+    console.error("Error submitting response feedback:", err);
+    if (typeof showToast === 'function') showToast('Failed to save response. Try again.', 'error');
+  }
+  
+  const fbCard = document.getElementById('feedback-card');
+  if (fbCard) {
+    fbCard.innerHTML = `
+      <div style="padding: 10px; color: var(--green-light); font-weight: 600; font-size: 0.9rem;">
+        ❤️ Thank you! Your feedback has been sent to the teacher dashboard.
+      </div>
+    `;
+  }
+};
+
+window.renderStudentStreakDashboard = function() {
+  const streakCard = document.getElementById('streak-card');
+  if (!streakCard) return;
+
+  const history = JSON.parse(localStorage.getItem('ef_review_history') || '[]');
+  
+  // Day 21: Always show the streak card so the feature is visible, even with 0 reviews
+  streakCard.style.display = 'block';
+  const totalCompleted = history.length;
+  
+  const dates = [...new Set(history.map(h => {
+    try {
+      return getLocalDateString(new Date(h.date));
+    } catch(e) {
+      return '';
+    }
+  }).filter(Boolean))];
+  
+  let currentStreak = 0;
+  let longestStreak = 0;
+  
+  if (dates.length > 0) {
+    const todayStr = getLocalDateString(new Date());
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+    
+    const dateSet = new Set(dates);
+    
+    let tempDate = new Date();
+    let tempStr = getLocalDateString(tempDate);
+    
+    if (dateSet.has(tempStr)) {
+      currentStreak = 1;
+    } else if (dateSet.has(yesterdayStr)) {
+      currentStreak = 1;
+      tempDate = yesterday;
+    }
+    
+    if (currentStreak > 0) {
+      while (true) {
+        tempDate.setDate(tempDate.getDate() - 1);
+        const prevStr = getLocalDateString(tempDate);
+        if (dateSet.has(prevStr)) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+    
+    const sortedDates = [...dates].sort((a, b) => new Date(a) - new Date(b));
+    let tempStreak = 1;
+    longestStreak = 1;
+    for (let i = 0; i < sortedDates.length - 1; i++) {
+      const d1 = new Date(sortedDates[i]);
+      const d2 = new Date(sortedDates[i+1]);
+      const diff = (d2 - d1) / 86400000;
+      if (diff <= 1.1) {
+        tempStreak++;
+        if (tempStreak > longestStreak) {
+          longestStreak = tempStreak;
+        }
+      } else if (diff > 1.1) {
+        tempStreak = 1;
+      }
+    }
+    if (longestStreak < currentStreak) {
+      longestStreak = currentStreak;
+    }
+  }
+
+  document.getElementById('streak-badge-count').textContent = `${currentStreak} Day${currentStreak !== 1 ? 's' : ''}`;
+  document.getElementById('streak-current').textContent = `${currentStreak} day${currentStreak !== 1 ? 's' : ''}`;
+  document.getElementById('streak-longest').textContent = `${longestStreak} day${longestStreak !== 1 ? 's' : ''}`;
+  document.getElementById('streak-total').textContent = `${totalCompleted} session${totalCompleted !== 1 ? 's' : ''}`;
+
+  const heatmapRow = document.getElementById('streak-heatmap-row');
+  if (heatmapRow) {
+    heatmapRow.innerHTML = '';
+    const dateSet = new Set(dates);
+    
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = getLocalDateString(d);
+      const isStudied = dateSet.has(dStr);
+      
+      const dot = document.createElement('div');
+      dot.className = `streak-dot ${isStudied ? 'studied' : 'skipped'}`;
+      dot.style.width = '14px';
+      dot.style.height = '14px';
+      dot.style.borderRadius = '50%';
+      dot.style.background = isStudied ? 'var(--green-light)' : 'rgba(255,255,255,0.08)';
+      dot.style.border = isStudied ? 'none' : '1px solid var(--border-light)';
+      
+      const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      dot.title = `${label}: ${isStudied ? 'Studied! 🔥' : 'No review'}`;
+      dot.style.cursor = 'help';
+      
+      heatmapRow.appendChild(dot);
+    }
+  }
+};
 
 function recordWrongCard(sessionId, cardId) {
   try {

@@ -26,6 +26,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAllSessions();
   renderAnalytics();
 
+  // Day 21: Listen to storage changes so teacher dashboard auto-refreshes in local tab mode
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'ef_sessions') {
+      renderAllSessions();
+      renderAnalytics();
+      if (selectedResultsSessionId) {
+        renderResultsPanel(selectedResultsSessionId);
+        try {
+          renderCardDifficultyHeatMap(selectedResultsSessionId);
+        } catch(err) {}
+      }
+    }
+  });
+
   // Day 6: attempt Firebase init in background
   const firebaseOk = await window.EduStore.initFirebase();
   updateFirebaseStatusUI(firebaseOk);
@@ -41,6 +55,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {}
       renderAllSessions();
       renderAnalytics();
+
+      // Day 21: Auto-refresh Results panel in real-time if active
+      if (selectedResultsSessionId) {
+        renderResultsPanel(selectedResultsSessionId);
+        try {
+          renderCardDifficultyHeatMap(selectedResultsSessionId);
+        } catch(err) {}
+      }
 
       // Day 11: Notification on new response
       const totalResponses = sessions.reduce((acc, s) => acc + (s.responses ? s.responses.length : 0), 0);
@@ -2054,6 +2076,12 @@ function renderResultsPanel(id) {
   const avgAcc = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : 0;
   const accColor = avgAcc < 40 ? '#f28b82' : avgAcc < 75 ? 'var(--yellow)' : 'var(--green-light)';
 
+  // Day 21: Compute feedback rating average
+  const feedbackResponses = responses.filter(r => r.feedbackRating > 0);
+  const avgRating = feedbackResponses.length > 0
+    ? (feedbackResponses.reduce((sum, r) => sum + r.feedbackRating, 0) / feedbackResponses.length).toFixed(1)
+    : 'N/A';
+
   // ── Render student rows
   const studentRowsHTML = responses.length === 0
     ? `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-dim);">No student submissions yet.</td></tr>`
@@ -2127,7 +2155,10 @@ function renderResultsPanel(id) {
           <span>📝 ${totalCards} cards</span>
           <span>👥 ${responses.length} submissions</span>
         </div>
-        <div class="results-avg-acc" style="color:${accColor}">${avgAcc}% Average Accuracy</div>
+        <div class="results-avg-acc" style="color:${accColor}; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+          <span>${avgAcc}% Average Accuracy</span>
+          ${avgRating !== 'N/A' ? `<span style="color: var(--yellow); font-size: 0.9rem; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">⭐ ${avgRating} / 5.0 rating (${feedbackResponses.length} review${feedbackResponses.length !== 1 ? 's' : ''})</span>` : ''}
+        </div>
       </div>
       <div class="results-header-right" style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="btn btn-outline btn-sm" onclick="syncClassroomRoster('${escapeHTML(session.id)}')">
@@ -2162,6 +2193,29 @@ function renderResultsPanel(id) {
     <div class="results-card-accordion">
       ${cardAccordionHTML}
     </div>
+
+    <!-- Day 21: Render feedback comments section -->
+    ${(() => {
+      const feedbackCommentsHTML = feedbackResponses.map(res => {
+        if (!res.feedbackComment) return '';
+        return `
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <strong style="font-size: 0.8rem; color: var(--text-dim);">${escapeHTML(res.studentId)}</strong>
+              <span style="color: var(--yellow); font-size: 0.8rem;">${'★'.repeat(res.feedbackRating)}${'☆'.repeat(5 - res.feedbackRating)}</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text); margin: 0; line-height: 1.4;">${escapeHTML(res.feedbackComment)}</p>
+          </div>
+        `;
+      }).filter(Boolean).join('');
+      
+      return feedbackCommentsHTML ? `
+        <h3 class="results-section-title" style="margin-top:28px;">💬 Student Feedback</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 4px; margin-bottom: 16px;">
+          ${feedbackCommentsHTML}
+        </div>
+      ` : '';
+    })()}
   `;
 }
 
