@@ -1462,31 +1462,42 @@ async function finishReview() {
   else                    accEl.style.color = 'var(--green-light)';
 
   // Day 11: Analytics Dashboard
-  saveAndRenderAnalytics(currentSession.id, accuracy, sessionAnswers, currentSession.cards);
+  try {
+    saveAndRenderAnalytics(currentSession.id, accuracy, sessionAnswers, currentSession.cards);
+  } catch(err) {
+    console.error('[EduFlash] saveAndRenderAnalytics failed:', err);
+  }
 
   // Day 16: Render Personalized Practice Schedule & Memory Retention Planner
-  if (typeof PracticePlannerEngine !== 'undefined') {
-    PracticePlannerEngine.renderWidget(currentSession, accuracy, sessionAnswers);
+  try {
+    if (typeof PracticePlannerEngine !== 'undefined') {
+      PracticePlannerEngine.renderWidget(currentSession, accuracy, sessionAnswers);
+    }
+  } catch(err) {
+    console.error('[EduFlash] PracticePlannerEngine.renderWidget failed:', err);
   }
 
   // Day 14: XP bonuses and achievements
-  let xpResult = null;
-  let streak = 0;
-  sessionAnswers.forEach(ans => {
-    if (ans && ans.isCorrect) { streak++; if (streak >= 3 && streak % 3 === 0) xpResult = XPEngine.awardXP(15, 'Streak bonus'); }
-    else streak = 0;
-  });
-  if (accuracy >= 80) xpResult = XPEngine.awardXP(25, 'High accuracy bonus');
-  if (accuracy === 100) xpResult = XPEngine.awardXP(50, 'Perfect score!');
+  try {
+    let xpResult = null;
+    let streak = 0;
+    sessionAnswers.forEach(ans => {
+      if (ans && ans.isCorrect) { streak++; if (streak >= 3 && streak % 3 === 0) xpResult = XPEngine.awardXP(15, 'Streak bonus'); }
+      else streak = 0;
+    });
+    if (accuracy >= 80) xpResult = XPEngine.awardXP(25, 'High accuracy bonus');
+    if (accuracy === 100) xpResult = XPEngine.awardXP(50, 'Perfect score!');
 
-  // Render XP bar and achievements
-  renderXPBar();
-  renderAchievementBadges();
+    // Render XP bar and achievements
+    renderXPBar();
+    renderAchievementBadges();
 
-  // Check for level-up
-  const progress = XPEngine.getLevelProgress(XPEngine.getTotalXP());
-  // We check leveledUp from any of the xpResult calls
-  if (xpResult && xpResult.leveledUp) showLevelUpModal(xpResult.newLevel);
+    // Check for level-up
+    const progress = XPEngine.getLevelProgress(XPEngine.getTotalXP());
+    if (xpResult && xpResult.leveledUp) showLevelUpModal(xpResult.newLevel);
+  } catch(err) {
+    console.error('[EduFlash] XP Engine failed:', err);
+  }
 
   // Day 21: Setup atomic in-flight response payload
   window.pendingResponsePayload = responsePayload;
@@ -1670,94 +1681,120 @@ If you push a heavy box on a frictionless surface in space, will it speed up, sl
 //  Day 11: Analytics & Keyboard Shortcuts
 // ════════════════════════════════════════════════════════════
 function saveAndRenderAnalytics(sessionId, accuracy, answers, cards) {
-  let history = JSON.parse(localStorage.getItem('ef_review_history') || '[]');
-  
-  let topicScores = {};
-  answers.forEach(ans => {
-    if (!ans) return;
-    const card = cards.find(c => c.id === ans.cardId);
-    if (!card) return;
-    const topic = card.topic || 'General';
-    if (!topicScores[topic]) topicScores[topic] = { correct: 0, total: 0 };
-    topicScores[topic].total++;
-    if (ans.isCorrect) topicScores[topic].correct++;
-  });
-  
-  const record = {
-    sessionId,
-    accuracy,
-    date: new Date().toISOString(),
-    topicScores
-  };
-  record.cardCount = cards.length;
-  record.mode = selectedStudyMode || 'standard';
-  history.push(record);
-  localStorage.setItem('ef_review_history', JSON.stringify(history));
-  
-  renderStudentAnalytics(history);
+  try {
+    let history = JSON.parse(localStorage.getItem('ef_review_history') || '[]');
+    
+    let topicScores = {};
+    if (answers && Array.isArray(answers) && cards && Array.isArray(cards)) {
+      answers.forEach(ans => {
+        if (!ans) return;
+        const card = cards.find(c => c.id === ans.cardId);
+        if (!card) return;
+        const topic = card.topic || 'General';
+        if (!topicScores[topic]) topicScores[topic] = { correct: 0, total: 0 };
+        topicScores[topic].total++;
+        if (ans.isCorrect) topicScores[topic].correct++;
+      });
+    }
+    
+    const record = {
+      sessionId,
+      accuracy,
+      date: new Date().toISOString(),
+      topicScores
+    };
+    record.cardCount = cards ? cards.length : 0;
+    record.mode = selectedStudyMode || 'standard';
+    history.push(record);
+    localStorage.setItem('ef_review_history', JSON.stringify(history));
+    
+    renderStudentAnalytics(history);
+  } catch(err) {
+    console.error("Error in saveAndRenderAnalytics:", err);
+  }
 }
 
 function renderStudentAnalytics(history) {
-  const container = document.getElementById('student-analytics');
-  if (container) container.style.display = 'block';
-  
-  // Trend Sparkline
-  const accHistory = history.map(h => h.accuracy);
-  drawSparkline('sparkline-canvas', accHistory);
-  
-  // Streak
-  const today = new Date().setHours(0,0,0,0);
-  let streakCount = [...new Set(history.map(h => new Date(h.date).setHours(0,0,0,0)))].length;
-  let heatDotsHtml = '';
-  for(let i=6; i>=0; i--) {
-    let d = new Date(today - i * 86400000);
-    let active = history.some(h => new Date(h.date).setHours(0,0,0,0) === d.getTime());
-    heatDotsHtml += `<div class="streak-dot ${active ? 'active' : ''}"></div>`;
-  }
-  
-  const streakEl = document.getElementById('streak-display');
-  if (streakEl) {
-    streakEl.innerHTML = `
-      <div style="font-size:1.4rem; font-weight:700; color:var(--text);">${streakCount} Days</div>
-      <div class="streak-dots-wrap">${heatDotsHtml}</div>
-    `;
-  }
-  
-  // Topic Mastery
-  let aggTopics = {};
-  history.forEach(h => {
-    Object.keys(h.topicScores || {}).forEach(t => {
-      if(!aggTopics[t]) aggTopics[t] = { correct:0, total:0 };
-      aggTopics[t].correct += h.topicScores[t].correct;
-      aggTopics[t].total += h.topicScores[t].total;
+  try {
+    const container = document.getElementById('student-analytics');
+    if (container) container.style.display = 'block';
+    
+    if (!history || history.length === 0) return;
+    
+    // Trend Sparkline
+    const accHistory = history.map(h => h.accuracy || 0);
+    drawSparkline('sparkline-canvas', accHistory);
+    
+    // Streak
+    const today = new Date().setHours(0,0,0,0);
+    let streakCount = [...new Set(history.map(h => {
+      try {
+        return new Date(h.date).setHours(0,0,0,0);
+      } catch(e) {
+        return 0;
+      }
+    }).filter(Boolean))].length;
+    
+    let heatDotsHtml = '';
+    for(let i=6; i>=0; i--) {
+      let d = new Date(today - i * 86400000);
+      let active = history.some(h => {
+        try {
+          return h.date && new Date(h.date).setHours(0,0,0,0) === d.getTime();
+        } catch(e) {
+          return false;
+        }
+      });
+      heatDotsHtml += `<div class="streak-dot ${active ? 'active' : ''}"></div>`;
+    }
+    
+    const streakEl = document.getElementById('streak-display');
+    if (streakEl) {
+      streakEl.innerHTML = `
+        <div style="font-size:1.4rem; font-weight:700; color:var(--text);">${streakCount} Days</div>
+        <div class="streak-dots-wrap">${heatDotsHtml}</div>
+      `;
+    }
+    
+    // Topic Mastery
+    let aggTopics = {};
+    history.forEach(h => {
+      Object.keys(h.topicScores || {}).forEach(t => {
+        if(!aggTopics[t]) aggTopics[t] = { correct:0, total:0 };
+        aggTopics[t].correct += h.topicScores[t].correct;
+        aggTopics[t].total += h.topicScores[t].total;
+      });
     });
-  });
-  
-  let masteryHtml = '';
-  Object.keys(aggTopics).slice(0, 3).forEach(t => {
-    let pct = Math.round((aggTopics[t].correct / aggTopics[t].total) * 100);
-    masteryHtml += `
-      <div class="mastery-bar">
-        <div class="mastery-bar-label">${escapeHTML(t)}</div>
-        <div class="mastery-bar-track"><div class="mastery-bar-fill" style="width:${pct}%"></div></div>
-        <div class="mastery-bar-pct">${pct}%</div>
-      </div>
-    `;
-  });
-  if(!masteryHtml) masteryHtml = '<div style="font-size:0.75rem; color:var(--text-dim);">Not enough data</div>';
-  
-  const masteryEl = document.getElementById('mastery-bars');
-  if (masteryEl) masteryEl.innerHTML = masteryHtml;
-  
-  // Personal Best
-  const bestAcc = Math.max(...history.map(h => h.accuracy));
-  const latestAcc = history[history.length - 1].accuracy;
-  const bestEl = document.getElementById('personal-best-display');
-  if (bestEl) {
-    bestEl.innerHTML = `
-      <div class="personal-best-value">${bestAcc}%</div>
-      <div class="personal-best-sub">${latestAcc >= bestAcc && history.length > 1 ? '🎉 New Record!' : 'All-time high score'}</div>
-    `;
+    
+    let masteryHtml = '';
+    Object.keys(aggTopics).slice(0, 3).forEach(t => {
+      let pct = Math.round((aggTopics[t].correct / aggTopics[t].total) * 100);
+      masteryHtml += `
+        <div class="mastery-bar">
+          <div class="mastery-bar-label">${escapeHTML(t)}</div>
+          <div class="mastery-bar-track"><div class="mastery-bar-fill" style="width:${pct}%"></div></div>
+          <div class="mastery-bar-pct">${pct}%</div>
+        </div>
+      `;
+    });
+    if(!masteryHtml) masteryHtml = '<div style="font-size:0.75rem; color:var(--text-dim);">Not enough data</div>';
+    
+    const masteryEl = document.getElementById('mastery-bars');
+    if (masteryEl) masteryEl.innerHTML = masteryHtml;
+    
+    // Personal Best
+    const validAccuracies = history.map(h => Number(h.accuracy) || 0);
+    const bestAcc = validAccuracies.length > 0 ? Math.max(...validAccuracies) : 0;
+    const latestAcc = validAccuracies.length > 0 ? validAccuracies[validAccuracies.length - 1] : 0;
+    const bestEl = document.getElementById('personal-best-display');
+    if (bestEl) {
+      bestEl.innerHTML = `
+        <div class="personal-best-value">${bestAcc}%</div>
+        <div class="personal-best-sub">${latestAcc >= bestAcc && history.length > 1 ? '🎉 New Record!' : 'All-time high score'}</div>
+      `;
+    }
+  } catch(err) {
+    console.error("Error in renderStudentAnalytics:", err);
   }
 }
 
